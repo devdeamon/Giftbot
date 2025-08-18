@@ -176,7 +176,10 @@ export default function GiftMiningGame() {
     })
 
     tg.requestFullscreen?.()
-    tg.enableVerticalSwipes?.()
+
+    tg.disableVerticalSwipes?.()
+
+    tg.enableClosingConfirmation?.()
 
     if (tg.initDataUnsafe?.user) setTelegramUser(tg.initDataUnsafe.user)
 
@@ -217,7 +220,6 @@ export default function GiftMiningGame() {
     }
 
     return () => {
-      // ensure confirmation off on unmount
       tg.disableClosingConfirmation?.()
       tg.enableVerticalSwipes?.()
 
@@ -249,7 +251,7 @@ export default function GiftMiningGame() {
       webApp.disableClosingConfirmation?.()
     }
 
-    webApp.enableVerticalSwipes?.()
+    webApp.disableVerticalSwipes?.()
   }, [webApp, miningSession.isActive])
 
   // ----- MainButton (single actual handler via ref) -----
