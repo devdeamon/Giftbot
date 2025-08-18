@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
+import { useLanguage } from "@/contexts/language-context"
 import { CheckSquare, Gift, Zap, Users, Calendar, Target, Star } from "lucide-react"
 
 interface Task {
@@ -35,6 +36,7 @@ export function TasksSection({
   miningSessionsCompleted = 0,
   webApp,
 }: TasksSectionProps) {
+  const { t } = useLanguage()
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
@@ -43,23 +45,9 @@ export function TasksSection({
   useEffect(() => {
     const initialTasks: Task[] = [
       {
-        id: "daily_login",
-        title: "DAILY_LOGIN",
-        description: "Login to the mining protocol daily",
-        type: "daily",
-        reward: 10,
-        progress: 1,
-        total: 1,
-        completed: true,
-        claimable: false,
-        icon: "📅",
-        difficulty: "easy",
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      },
-      {
         id: "mine_session",
-        title: "COMPLETE_MINING",
-        description: "Complete one full mining session",
+        title: t.tasks.completeMining,
+        description: t.tasks.completeMiningDesc,
         type: "mining",
         reward: 25,
         progress: miningSessionsCompleted,
@@ -71,8 +59,8 @@ export function TasksSection({
       },
       {
         id: "collect_shards",
-        title: "SHARD_COLLECTOR",
-        description: "Collect your first 10 GIFT shards",
+        title: t.tasks.shardCollector,
+        description: t.tasks.shardCollectorDesc,
         type: "achievement",
         reward: 50,
         progress: Math.min(shardsFound, 10),
@@ -84,8 +72,8 @@ export function TasksSection({
       },
       {
         id: "upgrade_miner",
-        title: "MINER_UPGRADE",
-        description: "Upgrade your miner to level 3",
+        title: t.tasks.minerUpgrade,
+        description: t.tasks.minerUpgradeDesc,
         type: "achievement",
         reward: 100,
         progress: Math.min(minerLevel, 3),
@@ -96,22 +84,9 @@ export function TasksSection({
         difficulty: "medium",
       },
       {
-        id: "invite_friends",
-        title: "RECRUIT_OPERATORS",
-        description: "Invite 3 operators to join mining",
-        type: "social",
-        reward: 200,
-        progress: 0,
-        total: 3,
-        completed: false,
-        claimable: false,
-        icon: "👥",
-        difficulty: "hard",
-      },
-      {
         id: "master_miner",
-        title: "MASTER_MINER",
-        description: "Reach miner level 10",
+        title: t.tasks.masterMiner,
+        description: t.tasks.masterMinerDesc,
         type: "achievement",
         reward: 500,
         progress: Math.min(minerLevel, 10),
@@ -124,7 +99,7 @@ export function TasksSection({
     ]
 
     setTasks(initialTasks)
-  }, [shardsFound, minerLevel, miningSessionsCompleted])
+  }, [shardsFound, minerLevel, miningSessionsCompleted, t])
 
   const handleClaimReward = (taskId: string) => {
     setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, claimable: false } : task)))
@@ -135,15 +110,6 @@ export function TasksSection({
     setSelectedTask(task)
     setIsTaskModalOpen(true)
     webApp?.HapticFeedback?.impactOccurred("light")
-  }
-
-  const handleShareTask = (task: Task) => {
-    const shareText = `🎮 Join me in GIFT Shard Mining! Complete "${task.title}" and earn ${task.reward} shards! 💎`
-
-    if (webApp?.openTelegramLink) {
-      webApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareText)}`)
-    }
-    webApp?.HapticFeedback?.selectionChanged()
   }
 
   const filteredTasks = tasks.filter((task) => activeFilter === "all" || task.type === activeFilter)
@@ -157,9 +123,9 @@ export function TasksSection({
       case "easy":
         return "text-green-400 border-green-400/30"
       case "medium":
-        return "text-yellow-400 border-yellow-400/30"
+        return "text-green-300 border-green-300/30"
       case "hard":
-        return "text-red-400 border-red-400/30"
+        return "text-green-200 border-green-200/30"
       default:
         return "text-green-400 border-green-400/30"
     }
@@ -188,11 +154,11 @@ export function TasksSection({
           <span className="text-green-600 text-sm">03</span>
           <h1 className="text-2xl font-bold text-green-400 tracking-wider flex items-center justify-center gap-2">
             <CheckSquare className="text-green-400" />
-            TASK PROTOCOL {">>>>>>>>"}
+            {t.tasks.title} {">>>>>>>>"}
           </h1>
           <span className="text-green-600 text-sm">03</span>
         </div>
-        <p className="text-green-600 text-xs uppercase tracking-widest">MISSION CONTROL ACTIVE</p>
+        <p className="text-green-600 text-xs uppercase tracking-widest">{t.tasks.missionControlActive}</p>
       </div>
 
       {/* Stats Overview */}
@@ -200,22 +166,22 @@ export function TasksSection({
         <CardHeader className="border-b border-green-400/20">
           <CardTitle className="flex items-center gap-2 text-green-400">
             <Star className="text-green-400" />
-            MISSION_STATISTICS
+            {t.tasks.missionStatistics}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 p-4">
           <div className="grid grid-cols-3 gap-4 text-center text-xs">
             <div>
               <div className="text-green-400 font-mono text-lg">{completedTasks.toString().padStart(2, "0")}</div>
-              <div className="text-green-600 uppercase">COMPLETED</div>
+              <div className="text-green-600 uppercase">{t.tasks.completed}</div>
             </div>
             <div>
               <div className="text-green-400 font-mono text-lg">{totalRewards.toString().padStart(3, "0")}</div>
-              <div className="text-green-600 uppercase">EARNED</div>
+              <div className="text-green-600 uppercase">{t.tasks.earned}</div>
             </div>
             <div>
               <div className="text-green-400 font-mono text-lg">{claimableRewards.toString().padStart(3, "0")}</div>
-              <div className="text-green-600 uppercase">CLAIMABLE</div>
+              <div className="text-green-600 uppercase">{t.tasks.claimable}</div>
             </div>
           </div>
           <div className="text-xs text-green-700 text-center">
@@ -228,10 +194,9 @@ export function TasksSection({
       {/* Filter Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
-          { id: "all", label: "ALL", icon: CheckSquare },
-          { id: "daily", label: "DAILY", icon: Calendar },
-          { id: "achievement", label: "ACHIEVE", icon: Target },
-          { id: "social", label: "SOCIAL", icon: Users },
+          { id: "all", label: t.tasks.all, icon: CheckSquare },
+          { id: "achievement", label: t.tasks.achievements, icon: Target },
+          { id: "mining", label: t.tasks.mining, icon: Zap },
         ].map((filter) => {
           const Icon = filter.icon
           const isActive = activeFilter === filter.id
@@ -269,18 +234,18 @@ export function TasksSection({
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge className={`${getDifficultyColor(task.difficulty)} bg-transparent`}>
-                    {task.difficulty.toUpperCase()}
+                    {t.tasks.difficulty[task.difficulty]}
                   </Badge>
                   <Badge
                     className={
                       task.completed
                         ? "bg-green-400/20 text-green-400 border-green-400/30"
                         : task.claimable
-                          ? "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
+                          ? "bg-green-300/20 text-green-300 border-green-300/30"
                           : "bg-green-700/20 text-green-700 border-green-700/30"
                     }
                   >
-                    {task.completed ? "COMPLETE" : task.claimable ? "CLAIMABLE" : "PENDING"}
+                    {task.completed ? t.tasks.complete : task.claimable ? t.tasks.claimable : t.tasks.pending}
                   </Badge>
                 </div>
               </CardTitle>
@@ -290,12 +255,12 @@ export function TasksSection({
 
               <div className="flex justify-between items-center">
                 <div className="text-xs text-green-700">
-                  PROGRESS: {task.progress}/{task.total}
+                  {t.tasks.progress}: {task.progress}/{task.total}
                 </div>
                 <div className="flex items-center gap-1 text-green-400">
                   <Gift className="w-3 h-3" />
                   <span className="text-sm font-mono">{task.reward}</span>
-                  <span className="text-xs">SHARDS</span>
+                  <span className="text-xs">{t.tasks.shards}</span>
                 </div>
               </div>
 
@@ -303,12 +268,6 @@ export function TasksSection({
                 {"█".repeat(Math.floor((task.progress / task.total) * 20))}
                 {"░".repeat(20 - Math.floor((task.progress / task.total) * 20))}
               </div>
-
-              {task.expiresAt && (
-                <div className="text-xs text-green-700 text-center">
-                  EXPIRES: {new Date(task.expiresAt).toLocaleTimeString()}
-                </div>
-              )}
 
               <div className="flex gap-2">
                 {task.claimable ? (
@@ -318,11 +277,11 @@ export function TasksSection({
                     size="sm"
                   >
                     <Gift className="w-4 h-4 mr-2" />
-                    CLAIM_REWARD
+                    {t.tasks.claimReward}
                   </Button>
                 ) : task.completed ? (
                   <div className="flex-1 text-center text-xs text-green-400 font-mono py-2">
-                    {">"} REWARD_CLAIMED {"<"}
+                    {">"} {t.tasks.rewardClaimed} {"<"}
                   </div>
                 ) : (
                   <Button
@@ -330,17 +289,7 @@ export function TasksSection({
                     className="flex-1 bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/30 font-mono uppercase tracking-wider"
                     size="sm"
                   >
-                    {">"} VIEW_DETAILS {"<"}
-                  </Button>
-                )}
-
-                {task.type === "social" && (
-                  <Button
-                    onClick={() => handleShareTask(task)}
-                    className="bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/30 font-mono uppercase tracking-wider"
-                    size="sm"
-                  >
-                    SHARE
+                    {">"} {t.tasks.viewDetails} {"<"}
                   </Button>
                 )}
               </div>
@@ -354,25 +303,25 @@ export function TasksSection({
         <Modal
           isOpen={isTaskModalOpen}
           onClose={() => setIsTaskModalOpen(false)}
-          title={`TASK_DETAILS: ${selectedTask.title}`}
+          title={`${t.tasks.taskDetails}: ${selectedTask.title}`}
         >
           <div className="space-y-4 text-green-400">
             <div className="text-center space-y-2">
               <div className="text-4xl">{selectedTask.icon}</div>
               <h3 className="text-lg font-mono">{selectedTask.title}</h3>
               <Badge className={`${getDifficultyColor(selectedTask.difficulty)} bg-transparent`}>
-                {selectedTask.difficulty.toUpperCase()}_DIFFICULTY
+                {t.tasks.difficulty[selectedTask.difficulty]}
               </Badge>
             </div>
 
             <div className="space-y-3 border border-green-400/20 p-3">
-              <div className="text-xs text-green-600 uppercase">MISSION_BRIEFING:</div>
+              <div className="text-xs text-green-600 uppercase">{t.tasks.missionBriefing}:</div>
               <div className="text-sm text-green-400">{selectedTask.description}</div>
             </div>
 
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-green-600">PROGRESS:</span>
+                <span className="text-green-600">{t.tasks.progress}:</span>
                 <span className="text-green-400 font-mono">
                   {selectedTask.progress}/{selectedTask.total}
                 </span>
@@ -384,25 +333,13 @@ export function TasksSection({
             </div>
 
             <div className="space-y-2 border border-green-400/20 p-3">
-              <div className="text-xs text-green-600 uppercase">REWARD_PACKAGE:</div>
+              <div className="text-xs text-green-600 uppercase">{t.tasks.rewardPackage}:</div>
               <div className="flex items-center justify-center gap-2 text-green-400">
                 <Gift className="w-5 h-5" />
                 <span className="text-xl font-mono">{selectedTask.reward}</span>
-                <span className="text-sm">GIFT_SHARDS</span>
+                <span className="text-sm">{t.tasks.giftShards}</span>
               </div>
             </div>
-
-            {selectedTask.type === "social" && (
-              <div className="text-xs text-green-700 text-center font-mono border border-green-400/20 p-2">
-                SHARE_WITH_FRIENDS_TO_COMPLETE
-              </div>
-            )}
-
-            {selectedTask.expiresAt && (
-              <div className="text-xs text-red-400 text-center font-mono border border-red-400/20 p-2">
-                ⚠ EXPIRES: {new Date(selectedTask.expiresAt).toLocaleString()}
-              </div>
-            )}
           </div>
         </Modal>
       )}
