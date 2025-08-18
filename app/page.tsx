@@ -380,20 +380,23 @@ export default function GiftMiningGame() {
 
   return (
     <div
-      className="min-h-screen bg-black overflow-y-auto"
+      className="h-screen bg-black overflow-y-auto"
       style={{
         overflowY: "auto",
         touchAction: "pan-y",
         WebkitOverflowScrolling: "touch",
         overscrollBehavior: "auto",
+        height: "100vh",
+        maxHeight: "100vh",
       }}
     >
       <div
-        className="text-green-400 space-y-6 font-mono pb-24"
+        className="text-green-400 space-y-6 font-mono pb-32"
         style={{
           paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
           paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
           paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
+          minHeight: "calc(100vh + 200px)",
         }}
       >
         <div className="px-4">
@@ -617,7 +620,21 @@ export default function GiftMiningGame() {
           </div>
         </div>
 
-        <div className="h-20" />
+        <div className="h-32" />
+
+        <div className="px-4">
+          <div className="text-center text-xs text-green-800 space-y-2">
+            <div className="border border-green-400/10 p-4">
+              <p className="font-mono">
+                {">"} SCROLL_TEST_AREA {"<"}
+              </p>
+              <p>IF_YOU_CAN_SEE_THIS_SCROLLING_WORKS</p>
+              <div className="text-green-900">{"▼".repeat(20)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-24" />
       </div>
     </div>
   )
