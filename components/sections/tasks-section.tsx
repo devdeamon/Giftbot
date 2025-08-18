@@ -18,6 +18,7 @@ interface Task {
   total: number
   completed: boolean
   claimable: boolean
+  claimed: boolean
   icon: string
   difficulty: "easy" | "medium" | "hard"
   expiresAt?: number
@@ -28,6 +29,43 @@ interface TasksSectionProps {
   minerLevel: number
   miningSessionsCompleted: number
   webApp?: any
+  onRewardClaimed?: (reward: number) => void
+}
+
+const LS_TASK_KEY = "gift_mining_tasks_state"
+
+const loadTasksState = (): Record<string, { claimed: boolean; claimable: boolean }> => {
+  try {
+    const raw = localStorage.getItem(LS_TASK_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+const saveTasksState = (state: Record<string, { claimed: boolean; claimable: boolean }>) => {
+  try {
+    localStorage.setItem(LS_TASK_KEY, JSON.stringify(state))
+  } catch {}
+}
+
+const syncTaskReward = async (taskId: string, reward: number, telegramInitData?: string) => {
+  try {
+    const response = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "claimReward",
+        taskId,
+        reward,
+        telegramInitData,
+      }),
+    })
+    return await response.json()
+  } catch (error) {
+    console.error("[v0] Task reward sync failed:", error)
+    return null
+  }
 }
 
 export function TasksSection({
@@ -35,14 +73,18 @@ export function TasksSection({
   minerLevel = 1,
   miningSessionsCompleted = 0,
   webApp,
+  onRewardClaimed,
 }: TasksSectionProps) {
   const { t } = useLanguage()
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState<"all" | "daily" | "achievement" | "social">("all")
+  const [isClaimingReward, setIsClaimingReward] = useState<string | null>(null)
 
   useEffect(() => {
+    const savedTasksState = loadTasksState()
+
     const initialTasks: Task[] = [
       {
         id: "mine_session",
@@ -53,7 +95,8 @@ export function TasksSection({
         progress: miningSessionsCompleted,
         total: 1,
         completed: miningSessionsCompleted >= 1,
-        claimable: miningSessionsCompleted >= 1,
+        claimable: miningSessionsCompleted >= 1 && !savedTasksState["mine_session"]?.claimed,
+        claimed: savedTasksState["mine_session"]?.claimed || false,
         icon: "⛏",
         difficulty: "easy",
       },
@@ -66,7 +109,8 @@ export function TasksSection({
         progress: Math.min(shardsFound, 10),
         total: 10,
         completed: shardsFound >= 10,
-        claimable: shardsFound >= 10,
+        claimable: shardsFound >= 10 && !savedTasksState["collect_shards"]?.claimed,
+        claimed: savedTasksState["collect_shards"]?.claimed || false,
         icon: "💎",
         difficulty: "medium",
       },
@@ -79,7 +123,8 @@ export function TasksSection({
         progress: Math.min(minerLevel, 3),
         total: 3,
         completed: minerLevel >= 3,
-        claimable: minerLevel >= 3,
+        claimable: minerLevel >= 3 && !savedTasksState["upgrade_miner"]?.claimed,
+        claimed: savedTasksState["upgrade_miner"]?.claimed || false,
         icon: "🔧",
         difficulty: "medium",
       },
@@ -92,7 +137,8 @@ export function TasksSection({
         progress: Math.min(minerLevel, 10),
         total: 10,
         completed: minerLevel >= 10,
-        claimable: minerLevel >= 10,
+        claimable: minerLevel >= 10 && !savedTasksState["master_miner"]?.claimed,
+        claimed: savedTasksState["master_miner"]?.claimed || false,
         icon: "🏆",
         difficulty: "hard",
       },
@@ -101,9 +147,44 @@ export function TasksSection({
     setTasks(initialTasks)
   }, [shardsFound, minerLevel, miningSessionsCompleted, t])
 
-  const handleClaimReward = (taskId: string) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, claimable: false } : task)))
-    webApp?.HapticFeedback?.notificationOccurred("success")
+  const handleClaimReward = async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task || !task.claimable || task.claimed) return
+
+    setIsClaimingReward(taskId)
+    webApp?.HapticFeedback?.impactOccurred("medium")
+
+    try {
+      // Sync with server
+      const result = await syncTaskReward(taskId, task.reward, webApp?.initData)
+
+      if (result?.success) {
+        // Update local state
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, claimable: false, claimed: true } : t)))
+
+        // Save to localStorage
+        const currentState = loadTasksState()
+        const newState = {
+          ...currentState,
+          [taskId]: { claimed: true, claimable: false },
+        }
+        saveTasksState(newState)
+
+        // Notify parent component to update balance
+        if (onRewardClaimed) {
+          onRewardClaimed(task.reward)
+        }
+
+        webApp?.HapticFeedback?.notificationOccurred("success")
+      } else {
+        webApp?.HapticFeedback?.notificationOccurred("error")
+      }
+    } catch (error) {
+      console.error("[v0] Failed to claim reward:", error)
+      webApp?.HapticFeedback?.notificationOccurred("error")
+    } finally {
+      setIsClaimingReward(null)
+    }
   }
 
   const handleTaskClick = (task: Task) => {
@@ -115,8 +196,10 @@ export function TasksSection({
   const filteredTasks = tasks.filter((task) => activeFilter === "all" || task.type === activeFilter)
 
   const completedTasks = tasks.filter((task) => task.completed).length
-  const totalRewards = tasks.filter((task) => task.completed).reduce((sum, task) => sum + task.reward, 0)
-  const claimableRewards = tasks.filter((task) => task.claimable).reduce((sum, task) => sum + task.reward, 0)
+  const totalRewards = tasks.filter((task) => task.claimed).reduce((sum, task) => sum + task.reward, 0)
+  const claimableRewards = tasks
+    .filter((task) => task.claimable && !task.claimed)
+    .reduce((sum, task) => sum + task.reward, 0)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -238,14 +321,22 @@ export function TasksSection({
                   </Badge>
                   <Badge
                     className={
-                      task.completed
-                        ? "bg-green-400/20 text-green-400 border-green-400/30"
+                      task.claimed
+                        ? "bg-green-500/20 text-green-500 border-green-500/30"
                         : task.claimable
                           ? "bg-green-300/20 text-green-300 border-green-300/30"
-                          : "bg-green-700/20 text-green-700 border-green-700/30"
+                          : task.completed
+                            ? "bg-green-400/20 text-green-400 border-green-400/30"
+                            : "bg-green-700/20 text-green-700 border-green-700/30"
                     }
                   >
-                    {task.completed ? t.tasks.complete : task.claimable ? t.tasks.claimable : t.tasks.pending}
+                    {task.claimed
+                      ? t.tasks.claimed
+                      : task.claimable
+                        ? t.tasks.claimable
+                        : task.completed
+                          ? t.tasks.complete
+                          : t.tasks.pending}
                   </Badge>
                 </div>
               </CardTitle>
@@ -270,18 +361,23 @@ export function TasksSection({
               </div>
 
               <div className="flex gap-2">
-                {task.claimable ? (
+                {task.claimed ? (
+                  <div className="flex-1 text-center text-xs text-green-500 font-mono py-2 border border-green-500/30">
+                    {">"} {t.tasks.rewardClaimed} {"<"}
+                  </div>
+                ) : task.claimable ? (
                   <Button
                     onClick={() => handleClaimReward(task.id)}
-                    className="flex-1 bg-green-400/20 hover:bg-green-400/30 text-green-400 border border-green-400/30 font-mono uppercase tracking-wider"
+                    disabled={isClaimingReward === task.id}
+                    className="flex-1 bg-green-400/20 hover:bg-green-400/30 text-green-400 border border-green-400/30 font-mono uppercase tracking-wider disabled:opacity-50"
                     size="sm"
                   >
                     <Gift className="w-4 h-4 mr-2" />
-                    {t.tasks.claimReward}
+                    {isClaimingReward === task.id ? t.tasks.claiming : t.tasks.claimReward}
                   </Button>
                 ) : task.completed ? (
                   <div className="flex-1 text-center text-xs text-green-400 font-mono py-2">
-                    {">"} {t.tasks.rewardClaimed} {"<"}
+                    {">"} {t.tasks.complete} {"<"}
                   </div>
                 ) : (
                   <Button

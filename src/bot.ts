@@ -1,7 +1,8 @@
 import { Telegraf, Markup } from "telegraf"
+import { getEnvVar } from "@/lib/env"
 
-const BOT_TOKEN = process.env.BOT_TOKEN!
-const WEBAPP_URL = process.env.WEBAPP_URL!
+const BOT_TOKEN = getEnvVar("BOT_TOKEN")
+const WEBAPP_URL = getEnvVar("WEBAPP_URL")
 
 const bot = new Telegraf(BOT_TOKEN)
 
@@ -15,6 +16,8 @@ interface UserData {
   minerLevel: number
   lastMiningStart?: number
   miningDuration: number
+  completedSessions?: number
+  totalMiningTime?: number
 }
 
 const userData = new Map<number, UserData>()
@@ -23,13 +26,15 @@ function getUserData(telegramId: number, userInfo: any): UserData {
   if (!userData.has(telegramId)) {
     userData.set(telegramId, {
       telegramId,
-      firstName: userInfo.first_name,
+      firstName: userInfo.first_name || "Unknown",
       lastName: userInfo.last_name,
       username: userInfo.username,
       isPremium: userInfo.is_premium,
       shards: 0,
       minerLevel: 1,
       miningDuration: 3600000, // 1 hour in milliseconds
+      completedSessions: 0,
+      totalMiningTime: 0,
     })
   }
   return userData.get(telegramId)!
@@ -54,7 +59,8 @@ bot.start(async (ctx) => {
       `STATUS: ONLINE\n` +
       `ACCOUNT: ${premiumStatus}\n` +
       `SHARDS_FOUND: ${userInfo.shards.toString().padStart(6, "0")}\n` +
-      `MINER_LEVEL: LVL_${userInfo.minerLevel.toString().padStart(2, "0")}\n\n` +
+      `MINER_LEVEL: LVL_${userInfo.minerLevel.toString().padStart(2, "0")}\n` +
+      `SESSIONS_COMPLETED: ${(userInfo.completedSessions || 0).toString().padStart(3, "0")}\n\n` +
       `DEEP MINING PROTOCOL ACTIVE\n` +
       `Start mining rare GIFT shards using our advanced protocol!`,
     Markup.inlineKeyboard([Markup.button.webApp("🚀 OPEN GIFT SHARD MINER", WEBAPP_URL)]),
@@ -73,6 +79,8 @@ bot.command("stats", async (ctx) => {
       `ACCOUNT: ${user.is_premium ? "🌟 PREMIUM" : "STANDARD"}\n` +
       `SHARDS_FOUND: ${userInfo.shards.toString().padStart(6, "0")}\n` +
       `MINER_LEVEL: LVL_${userInfo.minerLevel.toString().padStart(2, "0")}\n` +
+      `SESSIONS_COMPLETED: ${(userInfo.completedSessions || 0).toString().padStart(3, "0")}\n` +
+      `TOTAL_MINING_TIME: ${Math.floor((userInfo.totalMiningTime || 0) * 10) / 10}h\n` +
       `STATUS: ${isCurrentlyMining ? "[ACTIVE]" : "[IDLE]"}\n\n` +
       `> USE_MAIN_BUTTON_FOR_CONTROL <`,
     Markup.inlineKeyboard([Markup.button.webApp("⛏ Open Miner", WEBAPP_URL)]),
@@ -98,6 +106,8 @@ bot.on("web_app_data", async (ctx) => {
         userInfo.shards = data.shards || userInfo.shards
         userInfo.minerLevel = data.minerLevel || userInfo.minerLevel
         userInfo.lastMiningStart = data.lastMiningStart
+        userInfo.completedSessions = data.completedSessions || userInfo.completedSessions
+        userInfo.totalMiningTime = data.totalMiningTime || userInfo.totalMiningTime
         userData.set(user.id, userInfo)
 
         await ctx.answerWebAppQuery({
@@ -105,7 +115,7 @@ bot.on("web_app_data", async (ctx) => {
           id: "mining_update",
           title: "Mining Updated",
           input_message_content: {
-            message_text: `⛏ Mining progress updated!\nShards: ${userInfo.shards}\nLevel: ${userInfo.minerLevel}`,
+            message_text: `⛏ Mining progress updated!\nShards: ${userInfo.shards}\nLevel: ${userInfo.minerLevel}\nSessions: ${userInfo.completedSessions}`,
           },
         })
         break
@@ -122,6 +132,21 @@ bot.on("web_app_data", async (ctx) => {
             `> PROTOCOL_STATUS: ACTIVE <`,
         )
         break
+
+      case "mining_completed":
+        userInfo.completedSessions = (userInfo.completedSessions || 0) + 1
+        userInfo.totalMiningTime = (userInfo.totalMiningTime || 0) + (data.sessionDuration || 1)
+        userData.set(user.id, userInfo)
+
+        await ctx.reply(
+          `⛏ MINING SESSION COMPLETED!\n\n` +
+            `OPERATOR: ${user.first_name}\n` +
+            `SHARDS_FOUND: ${data.shardsFound || 0}\n` +
+            `TOTAL_SHARDS: ${userInfo.shards.toString().padStart(6, "0")}\n` +
+            `SESSIONS_COMPLETED: ${userInfo.completedSessions.toString().padStart(3, "0")}\n\n` +
+            `> RESTART_MINING_PROTOCOL <`,
+        )
+        break
     }
   } catch (error) {
     console.error("WebApp data error:", error)
@@ -129,7 +154,9 @@ bot.on("web_app_data", async (ctx) => {
 })
 
 export function sendMiningNotification(telegramId: number, message: string) {
-  bot.telegram.sendMessage(telegramId, message).catch(console.error)
+  bot.telegram.sendMessage(telegramId, message).catch((error) => {
+    console.error(`[v0] Failed to send notification to ${telegramId}:`, error)
+  })
 }
 
 setInterval(() => {
@@ -143,10 +170,13 @@ setInterval(() => {
           `⛏ MINING PROTOCOL COMPLETED\n\n` +
             `OPERATOR: ${user.firstName}\n` +
             `SESSION_TIME: ${Math.floor(user.miningDuration / 60000)} minutes\n` +
+            `TOTAL_SESSIONS: ${(user.completedSessions || 0) + 1}\n` +
             `STATUS: READY_FOR_RESTART\n\n` +
             `> RESTART_MINING_PROTOCOL <`,
         )
         user.lastMiningStart = undefined
+        user.completedSessions = (user.completedSessions || 0) + 1
+        userData.set(telegramId, user)
       }
     }
   })

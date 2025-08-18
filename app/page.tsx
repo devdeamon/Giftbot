@@ -88,6 +88,8 @@ interface MinerStats {
   miningSpeed: number // shards per day
   maxWorkTime: number // hours
   upgradeCost: number
+  completedSessions: number
+  totalMiningTime: number // in hours
 }
 
 interface MiningSession {
@@ -109,6 +111,7 @@ interface TelegramUser {
 const LS_KEYS = {
   miner: "gift_mining_miner_stats",
   session: "gift_mining_session",
+  sessionHistory: "gift_mining_session_history",
 } as const
 
 const loadLS = <T,>(k: string, fallback: T): T => {
@@ -136,6 +139,20 @@ const formatTime = (ms: number) => {
     .padStart(2, "0")}`
 }
 
+const syncWithServer = async (action: string, data: any) => {
+  try {
+    const response = await fetch("/api/mining", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, data, telegramInitData: window.Telegram?.WebApp?.initData }),
+    })
+    return await response.json()
+  } catch (error) {
+    console.error("[v0] Server sync failed:", error)
+    return null
+  }
+}
+
 export default function GiftMiningGame() {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null)
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null)
@@ -150,6 +167,8 @@ export default function GiftMiningGame() {
       miningSpeed: 0.000001, // shards per day
       maxWorkTime: 1, // 1 hour
       upgradeCost: 10,
+      completedSessions: 0,
+      totalMiningTime: 0,
     }),
   )
 
@@ -305,19 +324,44 @@ export default function GiftMiningGame() {
   // ----- Mining timer -----
   useEffect(() => {
     if (!miningSession.isActive) return
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const now = Date.now()
       const remaining = Math.max(0, miningSession.endTime - now)
 
       if (remaining === 0) {
+        const sessionDuration = (miningSession.endTime - miningSession.startTime) / (1000 * 60 * 60) // hours
+
+        const result = await syncWithServer("completeMining", {
+          sessionId: miningSession.startTime,
+          duration: sessionDuration,
+          minerLevel: minerStats.level,
+          miningSpeed: minerStats.miningSpeed,
+        })
+
         setMiningSession({ isActive: false, startTime: 0, endTime: 0, timeRemaining: 0 })
-        const found = Math.random() < (minerStats.miningSpeed * minerStats.maxWorkTime) / 24
-        if (found) {
-          setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + 1 }))
+
+        const shardsFound =
+          result?.shardsFound || (Math.random() < (minerStats.miningSpeed * minerStats.maxWorkTime) / 24 ? 1 : 0)
+
+        setMinerStats((prev) => ({
+          ...prev,
+          shardsFound: prev.shardsFound + shardsFound,
+          completedSessions: prev.completedSessions + 1,
+          totalMiningTime: prev.totalMiningTime + sessionDuration,
+        }))
+
+        if (shardsFound > 0) {
           webApp?.HapticFeedback.notificationOccurred("success")
         } else {
           webApp?.HapticFeedback.impactOccurred("light")
         }
+
+        syncWithServer("notifyBot", {
+          userId: telegramUser?.id,
+          sessionCompleted: true,
+          shardsFound,
+          totalShards: minerStats.shardsFound + shardsFound,
+        })
       } else {
         setMiningSession((prev) => ({ ...prev, timeRemaining: remaining }))
         const percentage =
@@ -327,15 +371,32 @@ export default function GiftMiningGame() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [miningSession.isActive, miningSession.endTime, minerStats.miningSpeed, minerStats.maxWorkTime, webApp])
+  }, [
+    miningSession.isActive,
+    miningSession.endTime,
+    miningSession.startTime,
+    minerStats.miningSpeed,
+    minerStats.maxWorkTime,
+    minerStats.level,
+    minerStats.shardsFound,
+    webApp,
+    telegramUser?.id,
+  ])
 
   // ----- Actions -----
-  const startMining = () => {
+  const startMining = async () => {
     if (miningSession.isActive) return
     webApp?.HapticFeedback.impactOccurred("medium")
 
     const now = Date.now()
     const duration = minerStats.maxWorkTime * 60 * 60 * 1000
+
+    const serverResponse = await syncWithServer("startMining", {
+      userId: telegramUser?.id,
+      minerLevel: minerStats.level,
+      startTime: now,
+      duration: duration,
+    })
 
     setMiningSession({
       isActive: true,
@@ -349,7 +410,7 @@ export default function GiftMiningGame() {
     webApp?.MainButton.showProgress(false)
   }
 
-  const upgradeMiner = () => {
+  const upgradeMiner = async () => {
     if (minerStats.shardsFound < minerStats.upgradeCost) {
       webApp?.HapticFeedback.notificationOccurred("error")
       return
@@ -357,13 +418,23 @@ export default function GiftMiningGame() {
 
     webApp?.HapticFeedback.notificationOccurred("success")
 
-    setMinerStats((prev) => ({
-      level: prev.level + 1,
-      shardsFound: prev.shardsFound - prev.upgradeCost,
-      miningSpeed: prev.miningSpeed * 2,
-      maxWorkTime: Math.min(prev.maxWorkTime + 1, 8),
-      upgradeCost: Math.floor(prev.upgradeCost * 2.5),
-    }))
+    const newStats = {
+      level: minerStats.level + 1,
+      shardsFound: minerStats.shardsFound - minerStats.upgradeCost,
+      miningSpeed: minerStats.miningSpeed * 2,
+      maxWorkTime: Math.min(minerStats.maxWorkTime + 1, 8),
+      upgradeCost: Math.floor(minerStats.upgradeCost * 2.5),
+      completedSessions: minerStats.completedSessions,
+      totalMiningTime: minerStats.totalMiningTime,
+    }
+
+    await syncWithServer("upgradeMiner", {
+      userId: telegramUser?.id,
+      newLevel: newStats.level,
+      shardsSpent: minerStats.upgradeCost,
+    })
+
+    setMinerStats(newStats)
   }
 
   const handleButtonClick = (callback: () => void) => {
@@ -398,8 +469,15 @@ export default function GiftMiningGame() {
           <TasksSection
             shardsFound={minerStats.shardsFound}
             minerLevel={minerStats.level}
-            miningSessionsCompleted={0} // TODO: Track completed sessions
+            miningSessionsCompleted={minerStats.completedSessions}
             webApp={webApp}
+            onRewardClaimed={(reward) => {
+              setMinerStats((prev) => ({
+                ...prev,
+                shardsFound: prev.shardsFound + reward,
+              }))
+              webApp?.HapticFeedback?.notificationOccurred("success")
+            }}
           />
         )
       case "rating":

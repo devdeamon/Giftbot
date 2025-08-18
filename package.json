@@ -5,7 +5,9 @@
   "scripts": {
     "bot": "tsx src/bot.ts",
     "build": "next build",
+    "check-env": "tsx scripts/check-env.ts",
     "dev": "next dev",
+    "dev:full": "npm run check-env && concurrently \"npm run dev\" \"npm run bot\"",
     "lint": "next lint",
     "start": "next start"
   },
@@ -42,6 +44,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
+    "concurrently": "^9.1.0",
     "crypto": "latest",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
@@ -49,7 +52,7 @@
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
-    "next-themes": "latest",
+    "next-themes": "^0.4.6",
     "react": "^19",
     "react-day-picker": "9.8.0",
     "react-dom": "^19",
