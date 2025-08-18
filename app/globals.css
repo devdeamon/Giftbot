@@ -1,0 +1,238 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.145 0.02 264); /* Dark mining cave background */
+  --foreground: oklch(0.985 0 0); /* Bright white text */
+  --card: oklch(0.205 0.02 264); /* Slightly lighter card background */
+  --card-foreground: oklch(0.985 0 0); /* White text on cards */
+  --popover: oklch(0.145 0.02 264); /* Dark popover */
+  --popover-foreground: oklch(0.985 0 0); /* White popover text */
+  --primary: oklch(0.65 0.25 280); /* Purple accent for crystals and buttons */
+  --primary-foreground: oklch(0.985 0 0); /* White text on primary */
+  --secondary: oklch(0.45 0.05 264); /* Muted secondary */
+  --secondary-foreground: oklch(0.985 0 0); /* White text on secondary */
+  --muted: oklch(0.35 0.02 264); /* Muted elements */
+  --muted-foreground: oklch(0.708 0 0); /* Muted text */
+  --accent: oklch(0.65 0.25 280); /* Glowing crystal accent */
+  --accent-foreground: oklch(0.985 0 0); /* White text on accent */
+  --destructive: oklch(0.577 0.245 27.325); /* Orange for warnings */
+  --destructive-foreground: oklch(0.985 0 0); /* White text on destructive */
+  --border: oklch(0.35 0.02 264); /* Dark borders */
+  --input: oklch(0.25 0.02 264); /* Dark input fields */
+  --ring: oklch(0.65 0.25 280 / 0.5); /* Purple ring effect */
+  --chart-1: oklch(0.65 0.25 280); /* Purple for progress bars */
+  --chart-2: oklch(0.577 0.245 27.325); /* Orange accent */
+  --chart-3: oklch(0.6 0.2 320); /* Pink accent */
+  --chart-4: oklch(0.7 0.15 200); /* Blue accent */
+  --chart-5: oklch(0.55 0.2 120); /* Green accent */
+  --radius: 0.625rem;
+  --sidebar: oklch(0.145 0.02 264);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.65 0.25 280);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.577 0.245 27.325);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.35 0.02 264);
+  --sidebar-ring: oklch(0.65 0.25 280 / 0.5);
+
+  /* Added Telegram WebApp CSS variables for dynamic theming */
+  --tg-theme-bg-color: #000000;
+  --tg-theme-text-color: #00ff00;
+  --tg-theme-hint-color: #008000;
+  --tg-theme-button-color: #00ff00;
+  --tg-viewport-height: 100vh;
+  --tg-viewport-stable-height: 100vh;
+}
+
+.dark {
+  --background: oklch(0.145 0.02 264);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0.02 264);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0.02 264);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.65 0.25 280);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.45 0.05 264);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.35 0.02 264);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.65 0.25 280);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.35 0.02 264);
+  --input: oklch(0.25 0.02 264);
+  --ring: oklch(0.65 0.25 280 / 0.5);
+  --chart-1: oklch(0.65 0.25 280);
+  --chart-2: oklch(0.577 0.245 27.325);
+  --chart-3: oklch(0.6 0.2 320);
+  --chart-4: oklch(0.7 0.15 200);
+  --chart-5: oklch(0.55 0.2 120);
+  --sidebar: oklch(0.145 0.02 264);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.65 0.25 280);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.577 0.245 27.325);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.35 0.02 264);
+  --sidebar-ring: oklch(0.65 0.25 280 / 0.5);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Added Telegram WebApp optimizations for mobile and touch */
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  /* Added Telegram WebApp viewport and safe area support */
+  html {
+    height: 100%;
+    height: var(--tg-viewport-height, 100vh);
+    overflow: hidden;
+  }
+
+  body {
+    height: 100%;
+    height: var(--tg-viewport-height, 100vh);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Added button touch feedback for better mobile experience */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  button:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* Added custom animations for glowing crystals and mining effects */
+  @keyframes glow {
+    0%,
+    100% {
+      box-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor;
+    }
+    50% {
+      box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes mining {
+    0% {
+      transform: translateY(0px);
+    }
+    25% {
+      transform: translateY(-2px);
+    }
+    50% {
+      transform: translateY(0px);
+    }
+    75% {
+      transform: translateY(-1px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
+
+  .glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  .pulse-glow {
+    animation: pulse-glow 1.5s ease-in-out infinite;
+  }
+
+  .mining {
+    animation: mining 0.5s ease-in-out infinite;
+  }
+
+  /* Added Telegram-specific utility classes */
+  .tg-safe-area {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .tg-no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  .tg-touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
