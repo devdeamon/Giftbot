@@ -13,6 +13,7 @@ import { TasksSection } from "@/components/sections/tasks-section"
 import { RatingSection } from "@/components/sections/rating-section"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
+import { TelegramInit } from "@/components/telegram-init"
 
 // ---- Telegram typings ----
 interface TelegramWebApp {
@@ -160,6 +161,8 @@ export default function GiftMiningGame() {
       timeRemaining: 0,
     }),
   )
+
+  const [progressPercentage, setProgressPercentage] = useState(0)
 
   // Keep MainButton handler exact reference
   const mainButtonHandlerRef = useRef<(() => void) | null>(null)
@@ -317,6 +320,9 @@ export default function GiftMiningGame() {
         }
       } else {
         setMiningSession((prev) => ({ ...prev, timeRemaining: remaining }))
+        const percentage =
+          ((Date.now() - miningSession.startTime) / (miningSession.endTime - miningSession.startTime)) * 100
+        setProgressPercentage(percentage)
       }
     }, 1000)
 
@@ -635,11 +641,6 @@ export default function GiftMiningGame() {
     }
   }
 
-  const totalDurationMs = minerStats.maxWorkTime * 60 * 60 * 1000
-  const progressPercentage = miningSession.isActive
-    ? ((totalDurationMs - miningSession.timeRemaining) / totalDurationMs) * 100
-    : 0
-
   if (!isReady) {
     return (
       <div className="min-h-screen bg-black text-[#00ff00] p-4 flex items-center justify-center font-mono">
@@ -656,35 +657,39 @@ export default function GiftMiningGame() {
   }
 
   return (
-    <div
-      className="h-screen bg-black overflow-y-auto"
-      style={{
-        overflowY: "auto",
-        touchAction: "pan-y",
-        WebkitOverflowScrolling: "touch",
-        overscrollBehavior: "auto",
-        height: "100vh",
-        maxHeight: "100vh",
-      }}
-    >
+    <>
+      <TelegramInit />
+
       <div
-        className="text-[#00ff00] space-y-6 font-mono pb-32"
+        className="h-screen bg-black overflow-y-auto"
         style={{
-          paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
-          paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
-          paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
-          minHeight: "calc(100vh + 200px)",
-          paddingBottom: "120px",
+          overflowY: "auto",
+          touchAction: "pan-y",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "auto",
+          height: "100vh",
+          maxHeight: "100vh",
         }}
       >
-        {renderActiveSection()}
+        <div
+          className="text-[#00ff00] space-y-6 font-mono pb-32"
+          style={{
+            paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
+            paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
+            paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
+            minHeight: "calc(100vh + 200px)",
+            paddingBottom: "120px",
+          }}
+        >
+          {renderActiveSection()}
+        </div>
+
+        {/* UserProfileModal */}
+        <UserProfileModal isOpen={isUserModalOpen} onClose={handleUserModalClose} user={telegramUser} webApp={webApp} />
+
+        {/* Navigation Panel */}
+        <NavigationPanel activeTab={activeTab} onTabChange={handleTabChange} onTabClick={handleTabClick} />
       </div>
-
-      {/* UserProfileModal */}
-      <UserProfileModal isOpen={isUserModalOpen} onClose={handleUserModalClose} user={telegramUser} webApp={webApp} />
-
-      {/* Navigation Panel */}
-      <NavigationPanel activeTab={activeTab} onTabChange={handleTabChange} onTabClick={handleTabClick} />
-    </div>
+    </>
   )
 }
