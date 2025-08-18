@@ -242,13 +242,14 @@ export default function GiftMiningGame() {
   // ----- Manage closing confirmation based on mining state -----
   useEffect(() => {
     if (!webApp) return
+
     if (miningSession.isActive) {
       webApp.enableClosingConfirmation?.()
-      webApp.enableVerticalSwipes?.()
     } else {
       webApp.disableClosingConfirmation?.()
-      webApp.enableVerticalSwipes?.()
     }
+
+    webApp.enableVerticalSwipes?.()
   }, [webApp, miningSession.isActive])
 
   // ----- MainButton (single actual handler via ref) -----
@@ -376,16 +377,21 @@ export default function GiftMiningGame() {
   }
 
   return (
-    <div className="min-h-screen bg-black overflow-y-auto">
+    <div
+      className="min-h-screen bg-black overflow-y-auto"
+      style={{
+        overflowY: "auto",
+        touchAction: "pan-y",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "auto",
+      }}
+    >
       <div
         className="text-green-400 space-y-6 font-mono pb-24"
         style={{
           paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
           paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
           paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
-          overflowY: "auto",
-          touchAction: "pan-y",
-          WebkitOverflowScrolling: "touch",
         }}
       >
         <div className="px-4">
