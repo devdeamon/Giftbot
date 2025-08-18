@@ -33,6 +33,7 @@ export interface Translations {
 
   // Navigation
   mining: string
+
   wallet: {
     title: string
     protocolActive: string
@@ -54,7 +55,17 @@ export interface Translations {
     yourWalletAddress: string
     copyAddress: string
     shareAddress: string
+    balance: string
+    showBalance: string
+    hideBalance: string
+    send: string
+    receive: string
+    noTransactionsYet: string
+    cancel: string
+    confirm: string
+    yourAddress: string
   }
+
   tasks: {
     title: string
     missionControlActive: string
@@ -89,7 +100,15 @@ export interface Translations {
     missionBriefing: string
     rewardPackage: string
     giftShards: string
+    dailyTasks: string
+    social: string
+    allTasks: string
+    reward: string
+    claim: string
+    claimed: string
+    share: string
   }
+
   rating: {
     title: string
     leaderboardActive: string
@@ -133,6 +152,14 @@ export interface Translations {
     skilledOperator: string
     apprenticeMiner: string
     rookieOperator: string
+    leaderboard: string
+    yourRank: string
+    season: string
+    seasonEnds: string
+    nextRank: string
+    challenges: string
+    playerProfile: string
+    rank: string
   }
 
   // Common
@@ -181,6 +208,7 @@ export const translations: Record<string, Translations> = {
 
     // Navigation
     mining: "MINING",
+
     wallet: {
       title: "DIGITAL WALLET",
       protocolActive: "FINANCIAL PROTOCOL ACTIVE",
@@ -202,7 +230,17 @@ export const translations: Record<string, Translations> = {
       yourWalletAddress: "YOUR_WALLET_ADDRESS",
       copyAddress: "COPY_ADDRESS",
       shareAddress: "SHARE_THIS_ADDRESS_TO_RECEIVE_TOKENS",
+      balance: "BALANCE",
+      showBalance: "SHOW_BALANCE",
+      hideBalance: "HIDE_BALANCE",
+      send: "SEND",
+      receive: "RECEIVE",
+      noTransactionsYet: "NO_TRANSACTIONS_YET",
+      cancel: "CANCEL",
+      confirm: "CONFIRM",
+      yourAddress: "YOUR_ADDRESS",
     },
+
     tasks: {
       title: "TASK PROTOCOL",
       missionControlActive: "MISSION CONTROL ACTIVE",
@@ -237,7 +275,15 @@ export const translations: Record<string, Translations> = {
       missionBriefing: "MISSION_BRIEFING",
       rewardPackage: "REWARD_PACKAGE",
       giftShards: "GIFT_SHARDS",
+      dailyTasks: "DAILY_TASKS",
+      social: "SOCIAL",
+      allTasks: "ALL_TASKS",
+      reward: "REWARD",
+      claim: "CLAIM",
+      claimed: "CLAIMED",
+      share: "SHARE",
     },
+
     rating: {
       title: "GLOBAL RATING",
       leaderboardActive: "LEADERBOARD PROTOCOL ACTIVE",
@@ -281,38 +327,15 @@ export const translations: Record<string, Translations> = {
       skilledOperator: "SKILLED_OPERATOR",
       apprenticeMiner: "APPRENTICE_MINER",
       rookieOperator: "ROOKIE_OPERATOR",
+      leaderboard: "LEADERBOARD",
+      yourRank: "YOUR_RANK",
+      season: "SEASON",
+      seasonEnds: "SEASON_ENDS",
+      nextRank: "NEXT_RANK",
+      challenges: "CHALLENGES",
+      playerProfile: "PLAYER_PROFILE",
+      rank: "RANK",
     },
-
-    // Wallet
-    balance: "BALANCE",
-    giftTokens: "GIFT_TOKENS",
-    showBalance: "SHOW_BALANCE",
-    hideBalance: "HIDE_BALANCE",
-    send: "SEND",
-    receive: "RECEIVE",
-    transactionHistory: "TRANSACTION_HISTORY",
-    noTransactions: "NO_TRANSACTIONS_YET",
-    sendTokens: "SEND_TOKENS",
-    receiveTokens: "RECEIVE_TOKENS",
-    recipientAddress: "RECIPIENT_ADDRESS",
-    amount: "AMOUNT",
-    cancel: "CANCEL",
-    confirm: "CONFIRM",
-    yourAddress: "YOUR_ADDRESS",
-    // shareAddress: "SHARE_ADDRESS", // Removed as it's duplicated in wallet object
-
-    // Tasks
-    dailyTasks: "DAILY_TASKS",
-    achievements: "ACHIEVEMENTS",
-    social: "SOCIAL",
-    allTasks: "ALL_TASKS",
-    taskDetails: "TASK_DETAILS",
-    missionBriefing: "MISSION_BRIEFING",
-    progress: "PROGRESS",
-    reward: "REWARD",
-    claim: "CLAIM",
-    claimed: "CLAIMED",
-    share: "SHARE",
 
     // Common
     loading: "LOADING",
@@ -358,6 +381,7 @@ export const translations: Record<string, Translations> = {
 
     // Navigation
     mining: "ДОБЫЧА",
+
     wallet: {
       title: "ЦИФРОВОЙ КОШЕЛЁК",
       protocolActive: "ФИНАНСОВЫЙ ПРОТОКОЛ АКТИВЕН",
@@ -379,7 +403,17 @@ export const translations: Record<string, Translations> = {
       yourWalletAddress: "ВАШ_АДРЕС_КОШЕЛЬКА",
       copyAddress: "КОПИРОВАТЬ_АДРЕС",
       shareAddress: "ПОДЕЛИТЕСЬ_ЭТИМ_АДРЕСОМ_ДЛЯ_ПОЛУЧЕНИЯ_ТОКЕНОВ",
+      balance: "БАЛАНС",
+      showBalance: "ПОКАЗАТЬ_БАЛАНС",
+      hideBalance: "СКРЫТЬ_БАЛАНС",
+      send: "ОТПРАВИТЬ",
+      receive: "ПОЛУЧИТЬ",
+      noTransactionsYet: "ТРАНЗАКЦИЙ_ПОКА_НЕТ",
+      cancel: "ОТМЕНА",
+      confirm: "ПОДТВЕРДИТЬ",
+      yourAddress: "ВАШ_АДРЕС",
     },
+
     tasks: {
       title: "ПРОТОКОЛ ЗАДАНИЙ",
       missionControlActive: "ЦЕНТР УПРАВЛЕНИЯ МИССИЯМИ АКТИВЕН",
@@ -414,7 +448,15 @@ export const translations: Record<string, Translations> = {
       missionBriefing: "ОПИСАНИЕ_МИССИИ",
       rewardPackage: "ПАКЕТ_НАГРАД",
       giftShards: "ОСКОЛКИ_GIFT",
+      dailyTasks: "ЕЖЕДНЕВНЫЕ_ЗАДАНИЯ",
+      social: "СОЦИАЛЬНЫЕ",
+      allTasks: "ВСЕ_ЗАДАНИЯ",
+      reward: "НАГРАДА",
+      claim: "ПОЛУЧИТЬ",
+      claimed: "ПОЛУЧЕНО",
+      share: "ПОДЕЛИТЬСЯ",
     },
+
     rating: {
       title: "ГЛОБАЛЬНЫЙ РЕЙТИНГ",
       leaderboardActive: "ПРОТОКОЛ ТАБЛИЦЫ ЛИДЕРОВ АКТИВЕН",
@@ -458,50 +500,15 @@ export const translations: Record<string, Translations> = {
       skilledOperator: "ОПЫТНЫЙ_ОПЕРАТОР",
       apprenticeMiner: "УЧЕНИК_МАЙНЕР",
       rookieOperator: "НОВИЧОК_ОПЕРАТОР",
+      leaderboard: "ТАБЛИЦА_ЛИДЕРОВ",
+      yourRank: "ВАШ_РАНГ",
+      season: "СЕЗОН",
+      seasonEnds: "СЕЗОН_ЗАКАНЧИВАЕТСЯ",
+      nextRank: "СЛЕДУЮЩИЙ_РАНГ",
+      challenges: "ВЫЗОВЫ",
+      playerProfile: "ПРОФИЛЬ_ИГРОКА",
+      rank: "РАНГ",
     },
-
-    // Wallet
-    balance: "БАЛАНС",
-    giftTokens: "ТОКЕНЫ_GIFT",
-    showBalance: "ПОКАЗАТЬ_БАЛАНС",
-    hideBalance: "СКРЫТЬ_БАЛАНС",
-    send: "ОТПРАВИТЬ",
-    receive: "ПОЛУЧИТЬ",
-    transactionHistory: "ИСТОРИЯ_ТРАНЗАКЦИЙ",
-    noTransactions: "ТРАНЗАКЦИЙ_ПОКА_НЕТ",
-    sendTokens: "ОТПРАВИТЬ_ТОКЕНЫ",
-    receiveTokens: "ПОЛУЧИТЬ_ТОКЕНЫ",
-    recipientAddress: "АДРЕС_ПОЛУЧАТЕЛЯ",
-    amount: "СУММА",
-    cancel: "ОТМЕНА",
-    confirm: "ПОДТВЕРДИТЬ",
-    yourAddress: "ВАШ_АДРЕС",
-    // shareAddress: "ПОДЕЛИТЬСЯ_АДРЕСОМ", // Removed as it's duplicated in wallet object
-
-    // Tasks
-    dailyTasks: "ЕЖЕДНЕВНЫЕ_ЗАДАНИЯ",
-    achievements: "ДОСТИЖЕНИЯ",
-    social: "СОЦИАЛЬНЫЕ",
-    allTasks: "ВСЕ_ЗАДАНИЯ",
-    taskDetails: "ДЕТАЛИ_ЗАДАНИЯ",
-    missionBriefing: "ОПИСАНИЕ_МИССИИ",
-    progress: "ПРОГРЕСС",
-    reward: "НАГРАДА",
-    claim: "ПОЛУЧИТЬ",
-    claimed: "ПОЛУЧЕНО",
-    share: "ПОДЕЛИТЬСЯ",
-
-    // Rating
-    leaderboard: "ТАБЛИЦА_ЛИДЕРОВ",
-    yourRank: "ВАШ_РАНГ",
-    season: "СЕЗОН",
-    seasonEnds: "СЕЗОН_ЗАКАНЧИВАЕТСЯ",
-    nextRank: "СЛЕДУЮЩИЙ_РАНГ",
-    challenges: "ВЫЗОВЫ",
-    playerProfile: "ПРОФИЛЬ_ИГРОКА",
-    rank: "РАНГ",
-    shards: "ОСКОЛКИ",
-    level: "УРОВЕНЬ",
 
     // Common
     loading: "ЗАГРУЗКА",
