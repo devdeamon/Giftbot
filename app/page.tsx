@@ -176,7 +176,7 @@ export default function GiftMiningGame() {
     })
 
     tg.requestFullscreen?.()
-    tg.disableVerticalSwipes?.()
+    tg.enableVerticalSwipes?.()
 
     if (tg.initDataUnsafe?.user) setTelegramUser(tg.initDataUnsafe.user)
 
@@ -239,6 +239,18 @@ export default function GiftMiningGame() {
     saveLS(LS_KEYS.session, miningSession)
   }, [miningSession])
 
+  // ----- Manage closing confirmation based on mining state -----
+  useEffect(() => {
+    if (!webApp) return
+    if (miningSession.isActive) {
+      webApp.enableClosingConfirmation?.()
+      webApp.enableVerticalSwipes?.()
+    } else {
+      webApp.disableClosingConfirmation?.()
+      webApp.enableVerticalSwipes?.()
+    }
+  }, [webApp, miningSession.isActive])
+
   // ----- MainButton (single actual handler via ref) -----
   useEffect(() => {
     if (!webApp?.MainButton) return
@@ -253,12 +265,10 @@ export default function GiftMiningGame() {
       webApp.MainButton.setText(`⛏ MINING... ${formatTime(miningSession.timeRemaining)}`)
       webApp.MainButton.setParams({ color: "#000000", text_color: "#00ff00", is_visible: true, is_active: false })
       webApp.MainButton.showProgress(false)
-      webApp.enableClosingConfirmation?.()
     } else {
       webApp.MainButton.setText("> START MINING PROTOCOL <")
       webApp.MainButton.setParams({ color: "#000000", text_color: "#00ff00", is_visible: true, is_active: true })
       webApp.MainButton.hideProgress?.()
-      webApp.disableClosingConfirmation?.()
 
       const handler = () => {
         if (miningSession.isActive) return
@@ -373,8 +383,8 @@ export default function GiftMiningGame() {
           paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
           paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
           paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
+          overflowY: "auto",
           touchAction: "pan-y",
-          overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
         }}
       >
