@@ -87,6 +87,71 @@ bot.command("app", async (ctx) => {
   )
 })
 
+bot.on("web_app_data", async (ctx) => {
+  try {
+    const data = JSON.parse(ctx.webAppData.data)
+    const user = ctx.from
+    const userInfo = getUserData(user.id, user)
+
+    switch (data.action) {
+      case "update_mining":
+        userInfo.shards = data.shards || userInfo.shards
+        userInfo.minerLevel = data.minerLevel || userInfo.minerLevel
+        userInfo.lastMiningStart = data.lastMiningStart
+        userData.set(user.id, userInfo)
+
+        await ctx.answerWebAppQuery({
+          type: "article",
+          id: "mining_update",
+          title: "Mining Updated",
+          input_message_content: {
+            message_text: `⛏ Mining progress updated!\nShards: ${userInfo.shards}\nLevel: ${userInfo.minerLevel}`,
+          },
+        })
+        break
+
+      case "claim_reward":
+        const reward = data.reward || 0
+        userInfo.shards += reward
+        userData.set(user.id, userInfo)
+
+        await ctx.reply(
+          `🎉 REWARD CLAIMED!\n\n` +
+            `SHARDS_EARNED: +${reward.toString().padStart(6, "0")}\n` +
+            `TOTAL_SHARDS: ${userInfo.shards.toString().padStart(6, "0")}\n\n` +
+            `> PROTOCOL_STATUS: ACTIVE <`,
+        )
+        break
+    }
+  } catch (error) {
+    console.error("WebApp data error:", error)
+  }
+})
+
+export function sendMiningNotification(telegramId: number, message: string) {
+  bot.telegram.sendMessage(telegramId, message).catch(console.error)
+}
+
+setInterval(() => {
+  userData.forEach((user, telegramId) => {
+    if (user.lastMiningStart) {
+      const miningTime = Date.now() - user.lastMiningStart
+      if (miningTime >= user.miningDuration) {
+        // Mining session completed
+        sendMiningNotification(
+          telegramId,
+          `⛏ MINING PROTOCOL COMPLETED\n\n` +
+            `OPERATOR: ${user.firstName}\n` +
+            `SESSION_TIME: ${Math.floor(user.miningDuration / 60000)} minutes\n` +
+            `STATUS: READY_FOR_RESTART\n\n` +
+            `> RESTART_MINING_PROTOCOL <`,
+        )
+        user.lastMiningStart = undefined
+      }
+    }
+  })
+}, 60000) // Check every minute
+
 // Launch bot
 bot.launch()
 
