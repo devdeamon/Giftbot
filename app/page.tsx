@@ -13,7 +13,6 @@ import { TasksSection } from "@/components/sections/tasks-section"
 import { RatingSection } from "@/components/sections/rating-section"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/contexts/language-context"
-import { TelegramInit } from "@/components/telegram-init"
 
 // ---- Telegram typings ----
 interface TelegramWebApp {
@@ -88,8 +87,6 @@ interface MinerStats {
   miningSpeed: number // shards per day
   maxWorkTime: number // hours
   upgradeCost: number
-  completedSessions: number
-  totalMiningTime: number // in hours
 }
 
 interface MiningSession {
@@ -111,7 +108,6 @@ interface TelegramUser {
 const LS_KEYS = {
   miner: "gift_mining_miner_stats",
   session: "gift_mining_session",
-  sessionHistory: "gift_mining_session_history",
 } as const
 
 const loadLS = <T,>(k: string, fallback: T): T => {
@@ -139,20 +135,6 @@ const formatTime = (ms: number) => {
     .padStart(2, "0")}`
 }
 
-const syncWithServer = async (action: string, data: any) => {
-  try {
-    const response = await fetch("/api/mining", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, data, telegramInitData: window.Telegram?.WebApp?.initData }),
-    })
-    return await response.json()
-  } catch (error) {
-    console.error("[v0] Server sync failed:", error)
-    return null
-  }
-}
-
 export default function GiftMiningGame() {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null)
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null)
@@ -167,8 +149,6 @@ export default function GiftMiningGame() {
       miningSpeed: 0.000001, // shards per day
       maxWorkTime: 1, // 1 hour
       upgradeCost: 10,
-      completedSessions: 0,
-      totalMiningTime: 0,
     }),
   )
 
@@ -180,8 +160,6 @@ export default function GiftMiningGame() {
       timeRemaining: 0,
     }),
   )
-
-  const [progressPercentage, setProgressPercentage] = useState(0)
 
   // Keep MainButton handler exact reference
   const mainButtonHandlerRef = useRef<(() => void) | null>(null)
@@ -324,79 +302,34 @@ export default function GiftMiningGame() {
   // ----- Mining timer -----
   useEffect(() => {
     if (!miningSession.isActive) return
-    const interval = setInterval(async () => {
+    const interval = setInterval(() => {
       const now = Date.now()
       const remaining = Math.max(0, miningSession.endTime - now)
 
       if (remaining === 0) {
-        const sessionDuration = (miningSession.endTime - miningSession.startTime) / (1000 * 60 * 60) // hours
-
-        const result = await syncWithServer("completeMining", {
-          sessionId: miningSession.startTime,
-          duration: sessionDuration,
-          minerLevel: minerStats.level,
-          miningSpeed: minerStats.miningSpeed,
-        })
-
         setMiningSession({ isActive: false, startTime: 0, endTime: 0, timeRemaining: 0 })
-
-        const shardsFound =
-          result?.shardsFound || (Math.random() < (minerStats.miningSpeed * minerStats.maxWorkTime) / 24 ? 1 : 0)
-
-        setMinerStats((prev) => ({
-          ...prev,
-          shardsFound: prev.shardsFound + shardsFound,
-          completedSessions: prev.completedSessions + 1,
-          totalMiningTime: prev.totalMiningTime + sessionDuration,
-        }))
-
-        if (shardsFound > 0) {
+        const found = Math.random() < (minerStats.miningSpeed * minerStats.maxWorkTime) / 24
+        if (found) {
+          setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + 1 }))
           webApp?.HapticFeedback.notificationOccurred("success")
         } else {
           webApp?.HapticFeedback.impactOccurred("light")
         }
-
-        syncWithServer("notifyBot", {
-          userId: telegramUser?.id,
-          sessionCompleted: true,
-          shardsFound,
-          totalShards: minerStats.shardsFound + shardsFound,
-        })
       } else {
         setMiningSession((prev) => ({ ...prev, timeRemaining: remaining }))
-        const percentage =
-          ((Date.now() - miningSession.startTime) / (miningSession.endTime - miningSession.startTime)) * 100
-        setProgressPercentage(percentage)
       }
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [
-    miningSession.isActive,
-    miningSession.endTime,
-    miningSession.startTime,
-    minerStats.miningSpeed,
-    minerStats.maxWorkTime,
-    minerStats.level,
-    minerStats.shardsFound,
-    webApp,
-    telegramUser?.id,
-  ])
+  }, [miningSession.isActive, miningSession.endTime, minerStats.miningSpeed, minerStats.maxWorkTime, webApp])
 
   // ----- Actions -----
-  const startMining = async () => {
+  const startMining = () => {
     if (miningSession.isActive) return
     webApp?.HapticFeedback.impactOccurred("medium")
 
     const now = Date.now()
     const duration = minerStats.maxWorkTime * 60 * 60 * 1000
-
-    const serverResponse = await syncWithServer("startMining", {
-      userId: telegramUser?.id,
-      minerLevel: minerStats.level,
-      startTime: now,
-      duration: duration,
-    })
 
     setMiningSession({
       isActive: true,
@@ -410,7 +343,7 @@ export default function GiftMiningGame() {
     webApp?.MainButton.showProgress(false)
   }
 
-  const upgradeMiner = async () => {
+  const upgradeMiner = () => {
     if (minerStats.shardsFound < minerStats.upgradeCost) {
       webApp?.HapticFeedback.notificationOccurred("error")
       return
@@ -418,23 +351,13 @@ export default function GiftMiningGame() {
 
     webApp?.HapticFeedback.notificationOccurred("success")
 
-    const newStats = {
-      level: minerStats.level + 1,
-      shardsFound: minerStats.shardsFound - minerStats.upgradeCost,
-      miningSpeed: minerStats.miningSpeed * 2,
-      maxWorkTime: Math.min(minerStats.maxWorkTime + 1, 8),
-      upgradeCost: Math.floor(minerStats.upgradeCost * 2.5),
-      completedSessions: minerStats.completedSessions,
-      totalMiningTime: minerStats.totalMiningTime,
-    }
-
-    await syncWithServer("upgradeMiner", {
-      userId: telegramUser?.id,
-      newLevel: newStats.level,
-      shardsSpent: minerStats.upgradeCost,
-    })
-
-    setMinerStats(newStats)
+    setMinerStats((prev) => ({
+      level: prev.level + 1,
+      shardsFound: prev.shardsFound - prev.upgradeCost,
+      miningSpeed: prev.miningSpeed * 2,
+      maxWorkTime: Math.min(prev.maxWorkTime + 1, 8),
+      upgradeCost: Math.floor(prev.upgradeCost * 2.5),
+    }))
   }
 
   const handleButtonClick = (callback: () => void) => {
@@ -469,15 +392,8 @@ export default function GiftMiningGame() {
           <TasksSection
             shardsFound={minerStats.shardsFound}
             minerLevel={minerStats.level}
-            miningSessionsCompleted={minerStats.completedSessions}
+            miningSessionsCompleted={0} // TODO: Track completed sessions
             webApp={webApp}
-            onRewardClaimed={(reward) => {
-              setMinerStats((prev) => ({
-                ...prev,
-                shardsFound: prev.shardsFound + reward,
-              }))
-              webApp?.HapticFeedback?.notificationOccurred("success")
-            }}
           />
         )
       case "rating":
@@ -719,6 +635,11 @@ export default function GiftMiningGame() {
     }
   }
 
+  const totalDurationMs = minerStats.maxWorkTime * 60 * 60 * 1000
+  const progressPercentage = miningSession.isActive
+    ? ((totalDurationMs - miningSession.timeRemaining) / totalDurationMs) * 100
+    : 0
+
   if (!isReady) {
     return (
       <div className="min-h-screen bg-black text-[#00ff00] p-4 flex items-center justify-center font-mono">
@@ -735,39 +656,35 @@ export default function GiftMiningGame() {
   }
 
   return (
-    <>
-      <TelegramInit />
-
+    <div
+      className="h-screen bg-black overflow-y-auto"
+      style={{
+        overflowY: "auto",
+        touchAction: "pan-y",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "auto",
+        height: "100vh",
+        maxHeight: "100vh",
+      }}
+    >
       <div
-        className="h-screen bg-black overflow-y-auto"
+        className="text-[#00ff00] space-y-6 font-mono pb-32"
         style={{
-          overflowY: "auto",
-          touchAction: "pan-y",
-          WebkitOverflowScrolling: "touch",
-          overscrollBehavior: "auto",
-          height: "100vh",
-          maxHeight: "100vh",
+          paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
+          paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
+          paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
+          minHeight: "calc(100vh + 200px)",
+          paddingBottom: "120px",
         }}
       >
-        <div
-          className="text-[#00ff00] space-y-6 font-mono pb-32"
-          style={{
-            paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
-            paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
-            paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
-            minHeight: "calc(100vh + 200px)",
-            paddingBottom: "120px",
-          }}
-        >
-          {renderActiveSection()}
-        </div>
-
-        {/* UserProfileModal */}
-        <UserProfileModal isOpen={isUserModalOpen} onClose={handleUserModalClose} user={telegramUser} webApp={webApp} />
-
-        {/* Navigation Panel */}
-        <NavigationPanel activeTab={activeTab} onTabChange={handleTabChange} onTabClick={handleTabClick} />
+        {renderActiveSection()}
       </div>
-    </>
+
+      {/* UserProfileModal */}
+      <UserProfileModal isOpen={isUserModalOpen} onClose={handleUserModalClose} user={telegramUser} webApp={webApp} />
+
+      {/* Navigation Panel */}
+      <NavigationPanel activeTab={activeTab} onTabChange={handleTabChange} onTabClick={handleTabClick} />
+    </div>
   )
 }
