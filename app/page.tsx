@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Zap, TrendingUp, Terminal, Activity, User } from "lucide-react"
+import { Zap, TrendingUp, Terminal, Activity, User, Wifi, WifiOff } from "lucide-react"
+import { runProbe, type MiningResult } from "@/app/lib/probe"
 
 // ---- Telegram typings ----
 interface TelegramWebApp {
@@ -77,6 +78,7 @@ declare global {
 interface MinerStats {
   level: number
   shardsFound: number
+  totalScore: number // Added total score tracking
   miningSpeed: number // shards per day
   maxWorkTime: number // hours
   upgradeCost: number
@@ -87,6 +89,10 @@ interface MiningSession {
   startTime: number
   endTime: number
   timeRemaining: number
+  currentBytes?: number
+  targetMbps?: number
+  progress?: number
+  orderId?: string
 }
 
 interface TelegramUser {
@@ -148,6 +154,7 @@ export default function GiftMiningGame() {
     loadLS<MinerStats>("gift_mining_miner_stats", {
       level: 1,
       shardsFound: 0,
+      totalScore: 0,
       miningSpeed: 0.000001, // shards per day
       maxWorkTime: 1, // 1 hour
       upgradeCost: 10,
@@ -162,6 +169,14 @@ export default function GiftMiningGame() {
       timeRemaining: 0,
     }),
   )
+
+  const [miningProgress, setMiningProgress] = useState({ sent: 0, received: 0, progress: 0 })
+  const [lastMiningResult, setLastMiningResult] = useState<MiningResult | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "mining" | "claiming" | "error">(
+    "idle",
+  )
+
+  const [isRealMining, setIsRealMining] = useState(false)
 
   // Keep MainButton handler exact reference
   const mainButtonHandlerRef = useRef<(() => void) | null>(null)
@@ -323,24 +338,12 @@ export default function GiftMiningGame() {
       mainButtonHandlerRef.current = null
     }
 
-    if (miningSession.isActive) {
-      webApp.MainButton.setText(`⛏ MINING... ${formatTime(miningSession.timeRemaining)}`)
-      webApp.MainButton.setParams({ color: "#000000", text_color: "#00ff00", is_visible: true, is_active: false })
-      webApp.MainButton.showProgress(false)
-    } else {
-      webApp.MainButton.setText("> START MINING PROTOCOL <")
-      webApp.MainButton.setParams({ color: "#000000", text_color: "#00ff00", is_visible: true, is_active: true })
-      webApp.MainButton.hideProgress?.()
-
-      const handler = () => {
-        if (miningSession.isActive) return
-        startMining()
-      }
-      mainButtonHandlerRef.current = handler
-      webApp.MainButton.onClick(handler)
+    const handler = () => {
+      if (!isRealMining) startMining()
     }
+    mainButtonHandlerRef.current = handler
+    webApp.MainButton.onClick(handler)
 
-    // cleanup for safety
     return () => {
       if (mainButtonHandlerRef.current) {
         webApp.MainButton?.offClick(mainButtonHandlerRef.current)
@@ -348,56 +351,89 @@ export default function GiftMiningGame() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [webApp, miningSession.isActive, miningSession.timeRemaining])
-
-  useEffect(() => {
-    if (!miningSession.isActive) return
-
-    const interval = setInterval(() => {
-      const now = Date.now()
-      const remaining = Math.max(0, miningSession.endTime - now)
-
-      if (remaining === 0) {
-        // Session completed
-        setMiningSession({ isActive: false, startTime: 0, endTime: 0, timeRemaining: 0 })
-        notify("success")
-
-        // Final calculation for completed session
-        const sessionDuration = miningSession.endTime - miningSession.startTime
-        const perMs = minerStats.miningSpeed / (24 * 60 * 60 * 1000)
-        const totalGained = sessionDuration * perMs
-        if (totalGained > 0) {
-          setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + totalGained }))
-        }
-      } else {
-        // Just update UI timer, no shard calculation here
-        setMiningSession((prev) => ({ ...prev, timeRemaining: remaining }))
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [miningSession.isActive, miningSession.endTime, minerStats.miningSpeed, webApp])
+  }, [webApp])
 
   // ----- Actions -----
-  const startMining = () => {
-    if (miningSession.isActive) return
-    haptic("medium") // Added haptic feedback
+  const startMining = async () => {
+    if (miningSession.isActive || isRealMining) return
+    haptic("medium")
 
-    const now = Date.now()
-    const duration = minerStats.maxWorkTime * 60 * 60 * 1000
+    setIsRealMining(true)
+    setConnectionStatus("connecting")
 
-    setMiningSession({
-      isActive: true,
-      startTime: now,
-      endTime: now + duration,
-      timeRemaining: duration,
-    })
+    try {
+      // Get user ID from Telegram
+      const userId = telegramUser?.id?.toString() || "demo-user"
 
-    saveLS(LS_KEYS.lastTick, now) // Update last tick
+      // Request work order first
+      const workResponse = await fetch("/api/mining/work", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
 
-    webApp?.MainButton.setText("⛏ MINING IN PROGRESS...")
-    webApp?.MainButton.setParams({ is_active: false })
-    webApp?.MainButton.showProgress(false)
+      if (!workResponse.ok) {
+        throw new Error("Failed to get work order")
+      }
+
+      const workOrder = await workResponse.json()
+      console.log("[v0] Got work order:", workOrder)
+
+      setConnectionStatus("mining")
+      setMiningSession({
+        isActive: true,
+        startTime: Date.now(),
+        endTime: Date.now() + workOrder.durationMs,
+        timeRemaining: workOrder.durationMs,
+        targetMbps: workOrder.targetMbps,
+        orderId: workOrder.id,
+      })
+
+      // Start real mining probe
+      const result = await runProbe({
+        wsUrl: process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8081",
+        apiBase: "/api",
+        token: webApp?.initData || "demo-token",
+        onProgress: (progress) => {
+          setMiningProgress(progress)
+          // Update session with real progress
+          setMiningSession((prev) => ({
+            ...prev,
+            currentBytes: progress.sent,
+            progress: progress.progress,
+          }))
+        },
+      })
+
+      console.log("[v0] Mining completed:", result)
+      setLastMiningResult(result)
+      setConnectionStatus("claiming")
+
+      if (result.claim.ok && result.claim.addedScore) {
+        // Update stats with real mining results
+        setMinerStats((prev) => ({
+          ...prev,
+          shardsFound: prev.shardsFound + result.claim.addedScore!,
+          totalScore: prev.totalScore + result.claim.addedScore!,
+        }))
+        notify("success")
+      } else {
+        notify("error")
+      }
+    } catch (error) {
+      console.error("[v0] Mining failed:", error)
+      setConnectionStatus("error")
+      notify("error")
+    } finally {
+      setIsRealMining(false)
+      setConnectionStatus("idle")
+      setMiningSession({
+        isActive: false,
+        startTime: 0,
+        endTime: 0,
+        timeRemaining: 0,
+      })
+    }
   }
 
   const upgradeMiner = () => {
@@ -411,6 +447,7 @@ export default function GiftMiningGame() {
     setMinerStats((prev) => ({
       level: prev.level + 1,
       shardsFound: prev.shardsFound - prev.upgradeCost,
+      totalScore: prev.totalScore,
       miningSpeed: prev.miningSpeed * 2,
       maxWorkTime: Math.min(prev.maxWorkTime + 1, 8),
       upgradeCost: Math.floor(prev.upgradeCost * 2.5),
@@ -423,10 +460,13 @@ export default function GiftMiningGame() {
   }
 
   // ----- Derived -----
-  const totalDurationMs = minerStats.maxWorkTime * 60 * 60 * 1000
-  const progressPercentage = miningSession.isActive
-    ? ((totalDurationMs - miningSession.timeRemaining) / totalDurationMs) * 100
-    : 0
+  const totalDurationMs = miningSession.endTime - miningSession.startTime
+  const progressPercentage =
+    isRealMining && miningSession.progress
+      ? miningSession.progress * 100
+      : miningSession.isActive
+        ? ((totalDurationMs - miningSession.timeRemaining) / totalDurationMs) * 100
+        : 0
 
   if (!isReady) {
     return (
@@ -501,11 +541,11 @@ export default function GiftMiningGame() {
             <Card className="bg-black border-green-400/30 border">
               <CardContent className="p-4">
                 <div className="text-center space-y-2">
-                  <div className="text-xs text-green-600 uppercase tracking-wider">SHARDS_FOUND</div>
-                  <div className="text-3xl font-bold text-green-400 font-mono">
-                    {minerStats.shardsFound.toString().padStart(6, "0")}
+                  <div className="text-xs text-green-600 uppercase tracking-wider">TOTAL_SCORE</div>
+                  <div className="text-3xl font-bold text-green-400 font-mono">{minerStats.totalScore.toFixed(6)}</div>
+                  <div className="text-xs text-green-700">
+                    {"#".repeat(Math.min(10, Math.floor(minerStats.totalScore)))}
                   </div>
-                  <div className="text-xs text-green-700">{"#".repeat(Math.min(10, minerStats.shardsFound))}</div>
                 </div>
               </CardContent>
             </Card>
@@ -533,21 +573,35 @@ export default function GiftMiningGame() {
             <CardHeader className="border-b border-green-400/20">
               <CardTitle className="flex items-center justify-between text-green-400">
                 <div className="flex items-center gap-2">
-                  <Activity className={miningSession.isActive ? "animate-pulse text-green-400" : "text-green-700"} />
-                  MINING_PROTOCOL
+                  {connectionStatus === "idle" ? (
+                    <WifiOff className="text-green-700" />
+                  ) : (
+                    <Wifi className={isRealMining ? "animate-pulse text-green-400" : "text-green-700"} />
+                  )}
+                  REAL_MINING_PROTOCOL
                 </div>
-                <div className="text-xs text-green-600">{miningSession.isActive ? "[ACTIVE]" : "[IDLE]"}</div>
+                <div className="text-xs text-green-600">[{connectionStatus.toUpperCase()}]</div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 p-4">
-              {miningSession.isActive ? (
+              {isRealMining ? (
                 <>
                   <div className="text-center space-y-2">
-                    <div className="text-xs text-green-600 uppercase tracking-wider">TIME_REMAINING</div>
-                    <div className="text-4xl font-mono text-green-400 tracking-wider">
-                      {formatTime(miningSession.timeRemaining)}
+                    <div className="text-xs text-green-600 uppercase tracking-wider">
+                      {connectionStatus === "mining" ? "TRAFFIC_GENERATION" : connectionStatus.toUpperCase()}
                     </div>
-                    <div className="text-xs text-green-700">MINING_DEPTH: {Math.floor(progressPercentage)}%</div>
+                    {connectionStatus === "mining" && (
+                      <>
+                        <div className="text-2xl font-mono text-green-400 tracking-wider">
+                          {miningSession.targetMbps}Mbps TARGET
+                        </div>
+                        <div className="text-xs text-green-700">
+                          SENT: {(miningProgress.sent / 1024 / 1024).toFixed(2)}MB | RX:{" "}
+                          {(miningProgress.received / 1024 / 1024).toFixed(2)}MB
+                        </div>
+                      </>
+                    )}
+                    <div className="text-xs text-green-700">PROGRESS: {Math.floor(progressPercentage)}%</div>
                   </div>
                   <div className="space-y-2">
                     <Progress value={progressPercentage} className="h-2 bg-green-900/30" />
@@ -558,23 +612,26 @@ export default function GiftMiningGame() {
                   </div>
                   <div className="flex justify-center">
                     <Badge className="bg-green-400/20 text-green-400 border-green-400/30">
-                      <Clock className="w-3 h-3 mr-1" />
-                      PROTOCOL_ACTIVE
+                      <Activity className="w-3 h-3 mr-1 animate-pulse" />
+                      REAL_TRAFFIC_ACTIVE
                     </Badge>
-                  </div>
-                  <div className="text-xs text-green-700 text-center">
-                    {">"} USE_MAIN_BUTTON_FOR_CONTROL {"<"}
                   </div>
                 </>
               ) : (
                 <div className="text-center space-y-4">
                   <div className="text-green-700 space-y-2">
-                    <div className="text-6xl">⛏</div>
-                    <div className="text-xs uppercase tracking-wider">MINER_STATUS: STANDBY</div>
+                    <div className="text-6xl">🌐</div>
+                    <div className="text-xs uppercase tracking-wider">WEBRTC_MINER: STANDBY</div>
                     <div className="text-xs">
-                      {"> "} USE_MAIN_BUTTON_TO_START {"<"}
+                      {"> "} REAL_TRAFFIC_GENERATION_READY {"<"}
                     </div>
                   </div>
+                  {lastMiningResult && (
+                    <div className="text-xs text-green-700 font-mono border border-green-400/20 p-2">
+                      LAST: {(lastMiningResult.sent / 1024 / 1024).toFixed(2)}MB | SCORE: +
+                      {lastMiningResult.claim.addedScore?.toFixed(6) || 0}
+                    </div>
+                  )}
                   <div className="text-xs text-green-700 font-mono border border-green-400/20 p-2">
                     CONTROL_VIA_TELEGRAM_MAIN_BUTTON
                   </div>
