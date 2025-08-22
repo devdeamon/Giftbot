@@ -4,41 +4,41 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #000000; /* Pure black background */
-  --foreground: #00ff00; /* Bright green text matching MainButton */
-  --card: #0a0a0a; /* Slightly lighter card background */
-  --card-foreground: #00ff00; /* Green text on cards */
-  --popover: #000000; /* Black popover */
-  --popover-foreground: #00ff00; /* Green popover text */
-  --primary: #00ff00; /* Primary green matching MainButton */
-  --primary-foreground: #000000; /* Black text on primary */
-  --secondary: #003300; /* Dark green secondary */
-  --secondary-foreground: #00ff00; /* Green text on secondary */
-  --muted: #001100; /* Muted dark green */
-  --muted-foreground: #008000; /* Muted green text */
-  --accent: #00ff00; /* Bright green accent */
-  --accent-foreground: #000000; /* Black text on accent */
-  --destructive: #ff4444; /* Red for errors */
-  --destructive-foreground: #ffffff; /* White text on destructive */
-  --border: #003300; /* Dark green borders */
-  --input: #001100; /* Dark green input fields */
-  --ring: rgba(0, 255, 0, 0.5); /* Green ring effect */
-  --chart-1: #00ff00; /* Green for progress bars */
-  --chart-2: #00cc00; /* Darker green accent */
-  --chart-3: #008800; /* Even darker green */
-  --chart-4: #004400; /* Very dark green */
-  --chart-5: #002200; /* Darkest green */
+  --background: oklch(0.145 0.02 264); /* Dark mining cave background */
+  --foreground: oklch(0.985 0 0); /* Bright white text */
+  --card: oklch(0.205 0.02 264); /* Slightly lighter card background */
+  --card-foreground: oklch(0.985 0 0); /* White text on cards */
+  --popover: oklch(0.145 0.02 264); /* Dark popover */
+  --popover-foreground: oklch(0.985 0 0); /* White popover text */
+  --primary: oklch(0.65 0.25 280); /* Purple accent for crystals and buttons */
+  --primary-foreground: oklch(0.985 0 0); /* White text on primary */
+  --secondary: oklch(0.45 0.05 264); /* Muted secondary */
+  --secondary-foreground: oklch(0.985 0 0); /* White text on secondary */
+  --muted: oklch(0.35 0.02 264); /* Muted elements */
+  --muted-foreground: oklch(0.708 0 0); /* Muted text */
+  --accent: oklch(0.65 0.25 280); /* Glowing crystal accent */
+  --accent-foreground: oklch(0.985 0 0); /* White text on accent */
+  --destructive: oklch(0.577 0.245 27.325); /* Orange for warnings */
+  --destructive-foreground: oklch(0.985 0 0); /* White text on destructive */
+  --border: oklch(0.35 0.02 264); /* Dark borders */
+  --input: oklch(0.25 0.02 264); /* Dark input fields */
+  --ring: oklch(0.65 0.25 280 / 0.5); /* Purple ring effect */
+  --chart-1: oklch(0.65 0.25 280); /* Purple for progress bars */
+  --chart-2: oklch(0.577 0.245 27.325); /* Orange accent */
+  --chart-3: oklch(0.6 0.2 320); /* Pink accent */
+  --chart-4: oklch(0.7 0.15 200); /* Blue accent */
+  --chart-5: oklch(0.55 0.2 120); /* Green accent */
   --radius: 0.625rem;
-  --sidebar: #000000;
-  --sidebar-foreground: #00ff00;
-  --sidebar-primary: #00ff00;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #008000;
-  --sidebar-accent-foreground: #00ff00;
-  --sidebar-border: #003300;
-  --sidebar-ring: rgba(0, 255, 0, 0.5);
+  --sidebar: oklch(0.145 0.02 264);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.65 0.25 280);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.577 0.245 27.325);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.35 0.02 264);
+  --sidebar-ring: oklch(0.65 0.25 280 / 0.5);
 
-  /* Updated Telegram WebApp CSS variables to match consistent green theme */
+  /* Added Telegram WebApp CSS variables for dynamic theming */
   --tg-theme-bg-color: #000000;
   --tg-theme-text-color: #00ff00;
   --tg-theme-hint-color: #008000;
@@ -48,38 +48,38 @@
 }
 
 .dark {
-  --background: #000000;
-  --foreground: #00ff00;
-  --card: #0a0a0a;
-  --card-foreground: #00ff00;
-  --popover: #000000;
-  --popover-foreground: #00ff00;
-  --primary: #00ff00;
-  --primary-foreground: #000000;
-  --secondary: #003300;
-  --secondary-foreground: #00ff00;
-  --muted: #001100;
-  --muted-foreground: #008000;
-  --accent: #00ff00;
-  --accent-foreground: #000000;
-  --destructive: #ff4444;
-  --destructive-foreground: #ffffff;
-  --border: #003300;
-  --input: #001100;
-  --ring: rgba(0, 255, 0, 0.5);
-  --chart-1: #00ff00;
-  --chart-2: #00cc00;
-  --chart-3: #008800;
-  --chart-4: #004400;
-  --chart-5: #002200;
-  --sidebar: #000000;
-  --sidebar-foreground: #00ff00;
-  --sidebar-primary: #00ff00;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #008000;
-  --sidebar-accent-foreground: #00ff00;
-  --sidebar-border: #003300;
-  --sidebar-ring: rgba(0, 255, 0, 0.5);
+  --background: oklch(0.145 0.02 264);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0.02 264);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0.02 264);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.65 0.25 280);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.45 0.05 264);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.35 0.02 264);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.65 0.25 280);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.35 0.02 264);
+  --input: oklch(0.25 0.02 264);
+  --ring: oklch(0.65 0.25 280 / 0.5);
+  --chart-1: oklch(0.65 0.25 280);
+  --chart-2: oklch(0.577 0.245 27.325);
+  --chart-3: oklch(0.6 0.2 320);
+  --chart-4: oklch(0.7 0.15 200);
+  --chart-5: oklch(0.55 0.2 120);
+  --sidebar: oklch(0.145 0.02 264);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.65 0.25 280);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.577 0.245 27.325);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.35 0.02 264);
+  --sidebar-ring: oklch(0.65 0.25 280 / 0.5);
 }
 
 @theme inline {
@@ -167,10 +167,10 @@
   @keyframes glow {
     0%,
     100% {
-      box-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 15px #00ff00;
+      box-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor;
     }
     50% {
-      box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00, 0 0 30px #00ff00;
+      box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
     }
   }
 
@@ -179,12 +179,10 @@
     100% {
       opacity: 1;
       transform: scale(1);
-      box-shadow: 0 0 5px #00ff00;
     }
     50% {
       opacity: 0.8;
       transform: scale(1.05);
-      box-shadow: 0 0 15px #00ff00, 0 0 25px #00ff00;
     }
   }
 

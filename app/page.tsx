@@ -5,14 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Clock, TrendingUp, Terminal, Activity, User } from "lucide-react"
-import { UserProfileModal } from "@/components/user-profile-modal"
-import { NavigationPanel } from "@/components/navigation-panel"
-import { WalletSection } from "@/components/sections/wallet-section"
-import { TasksSection } from "@/components/sections/tasks-section"
-import { RatingSection } from "@/components/sections/rating-section"
-import { LanguageSwitcher } from "@/components/language-switcher"
-import { useLanguage } from "@/contexts/language-context"
+import { Clock, Zap, TrendingUp, Terminal, Activity, User } from "lucide-react"
 
 // ---- Telegram typings ----
 interface TelegramWebApp {
@@ -139,8 +132,6 @@ export default function GiftMiningGame() {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null)
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null)
   const [isReady, setIsReady] = useState(false)
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("mining")
 
   const [minerStats, setMinerStats] = useState<MinerStats>(() =>
     loadLS<MinerStats>("gift_mining_miner_stats", {
@@ -164,8 +155,6 @@ export default function GiftMiningGame() {
   // Keep MainButton handler exact reference
   const mainButtonHandlerRef = useRef<(() => void) | null>(null)
 
-  const { t } = useLanguage()
-
   // ----- Bootstrap Telegram WebApp -----
   useEffect(() => {
     if (typeof window === "undefined" || !window.Telegram?.WebApp) return
@@ -181,24 +170,27 @@ export default function GiftMiningGame() {
 
     tg.MainButton?.setParams({
       color: "#000000",
-      text_color: "#00ff00", // Exact same green as app
+      text_color: "#00ff00",
       is_visible: false,
       is_active: true,
     })
 
     tg.requestFullscreen?.()
+
     tg.disableVerticalSwipes?.()
+
     tg.enableClosingConfirmation?.()
 
     if (tg.initDataUnsafe?.user) setTelegramUser(tg.initDataUnsafe.user)
 
+    // theme vars
     if (tg.themeParams) {
       const root = document.documentElement
       root.style.setProperty("--tg-theme-bg-color", tg.themeParams.bg_color || "#000000")
-      root.style.setProperty("--tg-theme-text-color", "#00ff00") // Force consistent green
-      root.style.setProperty("--tg-theme-hint-color", "#008000")
-      root.style.setProperty("--tg-theme-button-color", "#00ff00") // Force consistent green
-      root.style.setProperty("--tg-theme-button-text-color", "#000000")
+      root.style.setProperty("--tg-theme-text-color", tg.themeParams.text_color || "#00ff00")
+      root.style.setProperty("--tg-theme-hint-color", tg.themeParams.hint_color || "#008000")
+      root.style.setProperty("--tg-theme-button-color", tg.themeParams.button_color || "#00ff00")
+      root.style.setProperty("--tg-theme-button-text-color", tg.themeParams.button_text_color || "#000000")
     }
 
     // safe areas
@@ -273,11 +265,11 @@ export default function GiftMiningGame() {
     }
 
     if (miningSession.isActive) {
-      webApp.MainButton.setText(`⛏ ${t.miningProtocol.toUpperCase()}... ${formatTime(miningSession.timeRemaining)}`)
+      webApp.MainButton.setText(`⛏ MINING... ${formatTime(miningSession.timeRemaining)}`)
       webApp.MainButton.setParams({ color: "#000000", text_color: "#00ff00", is_visible: true, is_active: false })
       webApp.MainButton.showProgress(false)
     } else {
-      webApp.MainButton.setText(`> ${t.startMining.toUpperCase()} <`)
+      webApp.MainButton.setText("> START MINING PROTOCOL <")
       webApp.MainButton.setParams({ color: "#000000", text_color: "#00ff00", is_visible: true, is_active: true })
       webApp.MainButton.hideProgress?.()
 
@@ -297,7 +289,7 @@ export default function GiftMiningGame() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [webApp, miningSession.isActive, miningSession.timeRemaining, t])
+  }, [webApp, miningSession.isActive, miningSession.timeRemaining])
 
   // ----- Mining timer -----
   useEffect(() => {
@@ -365,276 +357,7 @@ export default function GiftMiningGame() {
     callback()
   }
 
-  const handleUserModalClose = () => {
-    webApp?.HapticFeedback.selectionChanged()
-    setIsUserModalOpen(false)
-  }
-
-  const handleUserNameClick = () => {
-    webApp?.HapticFeedback.impactOccurred("light")
-    setIsUserModalOpen(true)
-  }
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab)
-  }
-
-  const handleTabClick = () => {
-    webApp?.HapticFeedback.selectionChanged()
-  }
-
-  const renderActiveSection = () => {
-    switch (activeTab) {
-      case "wallet":
-        return <WalletSection shardsFound={minerStats.shardsFound} webApp={webApp} />
-      case "tasks":
-        return (
-          <TasksSection
-            shardsFound={minerStats.shardsFound}
-            minerLevel={minerStats.level}
-            miningSessionsCompleted={0} // TODO: Track completed sessions
-            webApp={webApp}
-          />
-        )
-      case "rating":
-        return (
-          <RatingSection
-            shardsFound={minerStats.shardsFound}
-            minerLevel={minerStats.level}
-            telegramUser={telegramUser}
-            webApp={webApp}
-          />
-        )
-      default:
-        return (
-          <>
-            <div className="px-4">
-              <div className="text-center space-y-2 border border-green-400/30 p-4 bg-black/50">
-                <div className="flex items-center justify-center gap-4 mb-2">
-                  <span className="text-green-600 text-sm">01</span>
-                  <h1 className="text-2xl font-bold text-[#00ff00] tracking-wider flex items-center justify-center gap-2">
-                    <Terminal className="text-[#00ff00]" />
-                    {t.title} {">>>>>>>>"}
-                  </h1>
-                  <span className="text-green-600 text-sm">01</span>
-                </div>
-                <p className="text-green-600 text-xs uppercase tracking-widest">{t.subtitle}</p>
-
-                <div className="flex justify-center mt-2">
-                  <LanguageSwitcher />
-                </div>
-
-                {telegramUser && (
-                  <div className="flex items-center justify-center gap-2 text-xs text-green-700 mt-2">
-                    <User className="w-3 h-3" />
-                    <span>{t.operator}:</span>
-                    <button
-                      onClick={handleUserNameClick}
-                      className="text-[#00ff00] hover:text-green-300 underline underline-offset-2 transition-colors"
-                    >
-                      {telegramUser.first_name || "UNKNOWN"}
-                    </button>
-                    {telegramUser.username && <span>@{telegramUser.username}</span>}
-                  </div>
-                )}
-
-                <div className="text-xs text-green-700 mt-2">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      {t.status}: {t.online}
-                    </div>
-                    <div>{t.protocol}: v2.1.0</div>
-                    <div>
-                      {t.platform}: {webApp?.platform?.toUpperCase() || "WEB"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="px-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="bg-black border-green-400/30 border">
-                  <CardContent className="p-4">
-                    <div className="text-center space-y-2">
-                      <div className="text-xs text-green-600 uppercase tracking-wider">{t.shardsFound}</div>
-                      <div className="text-3xl font-bold text-[#00ff00] font-mono">
-                        {minerStats.shardsFound.toString().padStart(6, "0")}
-                      </div>
-                      <div className="text-xs text-green-700">{"#".repeat(Math.min(10, minerStats.shardsFound))}</div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-black border-green-400/30 border">
-                  <CardContent className="p-4">
-                    <div className="text-center space-y-2">
-                      <div className="text-xs text-green-600 uppercase tracking-wider">{t.minerLevel}</div>
-                      <div className="text-3xl font-bold text-[#00ff00] font-mono">
-                        LVL_{minerStats.level.toString().padStart(2, "0")}
-                      </div>
-                      <div className="text-xs text-green-700">
-                        {"▓".repeat(Math.min(10, minerStats.level))}
-                        {"░".repeat(Math.max(0, 10 - Math.min(10, minerStats.level)))}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Mining */}
-            <div className="px-4">
-              <Card className="bg-black border-green-400/30 border">
-                <CardHeader className="border-b border-green-400/20">
-                  <CardTitle className="flex items-center justify-between text-[#00ff00]">
-                    <div className="flex items-center gap-2">
-                      <Activity
-                        className={miningSession.isActive ? "animate-pulse text-[#00ff00]" : "text-green-700"}
-                      />
-                      {t.miningProtocol}
-                    </div>
-                    <div className="text-xs text-green-600">[{miningSession.isActive ? t.active : t.idle}]</div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 p-4">
-                  {miningSession.isActive ? (
-                    <>
-                      <div className="text-center space-y-2">
-                        <div className="text-xs text-green-600 uppercase tracking-wider">{t.timeRemaining}</div>
-                        <div className="text-4xl font-mono text-[#00ff00] tracking-wider">
-                          {formatTime(miningSession.timeRemaining)}
-                        </div>
-                        <div className="text-xs text-green-700">
-                          {t.miningDepth}: {Math.floor(progressPercentage)}%
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Progress value={progressPercentage} className="h-2 bg-green-900/30" />
-                        <div className="text-xs text-green-700 text-center">
-                          {"█".repeat(Math.floor(progressPercentage / 5))}
-                          {"░".repeat(20 - Math.floor(progressPercentage / 5))}
-                        </div>
-                      </div>
-                      <div className="flex justify-center">
-                        <Badge className="bg-[#00ff00]/20 text-[#00ff00] border-[#00ff00]/30">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {t.protocolActive}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-green-700 text-center">
-                        {">"} {t.useMainButton} {"<"}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center space-y-4">
-                      <div className="text-green-700 space-y-2">
-                        <div className="text-6xl">⛏</div>
-                        <div className="text-xs uppercase tracking-wider">
-                          {t.miningProtocol}: {t.idle}
-                        </div>
-                        <div className="text-xs">
-                          {"> "} {t.useMainButton} {"<"}
-                        </div>
-                      </div>
-                      <div className="text-xs text-green-700 font-mono border border-green-400/20 p-2">
-                        {t.useMainButton.replace(/_/g, "_")}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Upgrade */}
-            <div className="px-4">
-              <Card className="bg-black border-green-400/30 border">
-                <CardHeader className="border-b border-green-400/20">
-                  <CardTitle className="flex items-center gap-2 text-[#00ff00]">
-                    <TrendingUp className="text-[#00ff00]" />
-                    {t.upgradeMiner.toUpperCase()}_PROTOCOL
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 p-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs">
-                        <div className="text-[#00ff00] uppercase font-mono">
-                          {t.level.toUpperCase()}_{(minerStats.level + 1).toString().padStart(2, "0")}_UPGRADE
-                        </div>
-                        <div className="text-green-700 text-xs">{"> "} 2X_SPEED + 1HR_DURATION</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[#00ff00] font-mono text-lg">
-                          {minerStats.upgradeCost.toString().padStart(4, "0")}
-                        </div>
-                        <div className="text-green-700 text-xs uppercase">{t.shards}_REQ</div>
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-green-700 text-center">
-                      COST: {"$".repeat(Math.min(20, Math.floor(minerStats.upgradeCost / 10)))}
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={() => handleButtonClick(upgradeMiner)}
-                    disabled={minerStats.shardsFound < minerStats.upgradeCost}
-                    className="w-full bg-[#00ff00]/10 hover:bg-[#00ff00]/20 text-[#00ff00] border border-[#00ff00]/30 font-mono uppercase tracking-wider disabled:opacity-30 disabled:text-green-700 active:bg-[#00ff00]/30 transition-all duration-150"
-                    size="lg"
-                  >
-                    {"> "} {t.upgradeMiner.toUpperCase()}_PROTOCOL {"<"}
-                  </Button>
-
-                  {minerStats.shardsFound < minerStats.upgradeCost && (
-                    <div className="text-xs text-green-700 text-center font-mono">
-                      {t.error.toUpperCase()}: INSUFFICIENT_{t.shards.toUpperCase()} [
-                      {minerStats.upgradeCost - minerStats.shardsFound}_REQUIRED]
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Footer */}
-            <div className="px-4">
-              <div className="text-center text-xs text-green-700 pt-4 border-t border-green-400/20">
-                <div className="space-y-1">
-                  <p className="font-mono">
-                    {">"} {t.subtitle}_v2.1.0 {"<"}
-                  </p>
-                  <p className="text-green-800">KEEP_MINING_TO_DISCOVER_RARE_{t.title.split(" ")[1]}_SHARDS</p>
-                  {webApp && (
-                    <p className="text-green-900 text-xs">
-                      TG_API: {webApp.version} | VIEWPORT: {Math.round(webApp.viewportHeight)}px
-                    </p>
-                  )}
-                  <div className="text-green-900">{"#".repeat(50)}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="h-32" />
-
-            <div className="px-4">
-              <div className="text-center text-xs text-green-800 space-y-2">
-                <div className="border border-green-400/10 p-4">
-                  <p className="font-mono">
-                    {">"} SCROLL_TEST_AREA {"<"}
-                  </p>
-                  <p>IF_YOU_CAN_SEE_THIS_SCROLLING_WORKS</p>
-                  <div className="text-green-900">{"▼".repeat(20)}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="h-24" />
-          </>
-        )
-    }
-  }
-
+  // ----- Derived -----
   const totalDurationMs = minerStats.maxWorkTime * 60 * 60 * 1000
   const progressPercentage = miningSession.isActive
     ? ((totalDurationMs - miningSession.timeRemaining) / totalDurationMs) * 100
@@ -642,10 +365,10 @@ export default function GiftMiningGame() {
 
   if (!isReady) {
     return (
-      <div className="min-h-screen bg-black text-[#00ff00] p-4 flex items-center justify-center font-mono">
+      <div className="min-h-screen bg-black text-green-400 p-4 flex items-center justify-center font-mono">
         <div className="text-center space-y-4">
           <Terminal className="w-16 h-16 mx-auto animate-pulse" />
-          <div className="text-xl">{t.loading.toUpperCase()}_PROTOCOL...</div>
+          <div className="text-xl">INITIALIZING_PROTOCOL...</div>
           <div className="text-xs text-green-700">
             {"█".repeat(10)}
             {"░".repeat(10)}
@@ -668,23 +391,251 @@ export default function GiftMiningGame() {
       }}
     >
       <div
-        className="text-[#00ff00] space-y-6 font-mono pb-32"
+        className="text-green-400 space-y-6 font-mono pb-32"
         style={{
           paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
           paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
           paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
           minHeight: "calc(100vh + 200px)",
-          paddingBottom: "120px",
         }}
       >
-        {renderActiveSection()}
+        <div className="px-4">
+          <div className="text-center space-y-2 border border-green-400/30 p-4 bg-black/50">
+            <div className="flex items-center justify-center gap-4 mb-2">
+              <span className="text-green-600 text-sm">01</span>
+              <h1 className="text-2xl font-bold text-green-400 tracking-wider flex items-center justify-center gap-2">
+                <Terminal className="text-green-400" />
+                GIFT SHARD MINER {">>>>>>>>"}
+              </h1>
+              <span className="text-green-600 text-sm">01</span>
+            </div>
+            <p className="text-green-600 text-xs uppercase tracking-widest">DEEP MINING PROTOCOL ACTIVE</p>
+
+            {telegramUser && (
+              <div className="flex items-center justify-center gap-2 text-xs text-green-700 mt-2">
+                <User className="w-3 h-3" />
+                <span>OPERATOR: {telegramUser.first_name || "UNKNOWN"}</span>
+                {telegramUser.username && <span>@{telegramUser.username}</span>}
+              </div>
+            )}
+
+            <div className="text-xs text-green-700 mt-2">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>STATUS: ONLINE</div>
+                <div>PROTOCOL: v2.1.0</div>
+                <div>PLATFORM: {webApp?.platform?.toUpperCase() || "WEB"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="px-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="bg-black border-green-400/30 border">
+              <CardContent className="p-4">
+                <div className="text-center space-y-2">
+                  <div className="text-xs text-green-600 uppercase tracking-wider">SHARDS_FOUND</div>
+                  <div className="text-3xl font-bold text-green-400 font-mono">
+                    {minerStats.shardsFound.toString().padStart(6, "0")}
+                  </div>
+                  <div className="text-xs text-green-700">{"#".repeat(Math.min(10, minerStats.shardsFound))}</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-black border-green-400/30 border">
+              <CardContent className="p-4">
+                <div className="text-center space-y-2">
+                  <div className="text-xs text-green-600 uppercase tracking-wider">MINER_LEVEL</div>
+                  <div className="text-3xl font-bold text-green-400 font-mono">
+                    LVL_{minerStats.level.toString().padStart(2, "0")}
+                  </div>
+                  <div className="text-xs text-green-700">
+                    {"▓".repeat(Math.min(10, minerStats.level))}
+                    {"░".repeat(Math.max(0, 10 - Math.min(10, minerStats.level)))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Mining */}
+        <div className="px-4">
+          <Card className="bg-black border-green-400/30 border">
+            <CardHeader className="border-b border-green-400/20">
+              <CardTitle className="flex items-center justify-between text-green-400">
+                <div className="flex items-center gap-2">
+                  <Activity className={miningSession.isActive ? "animate-pulse text-green-400" : "text-green-700"} />
+                  MINING_PROTOCOL
+                </div>
+                <div className="text-xs text-green-600">{miningSession.isActive ? "[ACTIVE]" : "[IDLE]"}</div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4">
+              {miningSession.isActive ? (
+                <>
+                  <div className="text-center space-y-2">
+                    <div className="text-xs text-green-600 uppercase tracking-wider">TIME_REMAINING</div>
+                    <div className="text-4xl font-mono text-green-400 tracking-wider">
+                      {formatTime(miningSession.timeRemaining)}
+                    </div>
+                    <div className="text-xs text-green-700">MINING_DEPTH: {Math.floor(progressPercentage)}%</div>
+                  </div>
+                  <div className="space-y-2">
+                    <Progress value={progressPercentage} className="h-2 bg-green-900/30" />
+                    <div className="text-xs text-green-700 text-center">
+                      {"█".repeat(Math.floor(progressPercentage / 5))}
+                      {"░".repeat(20 - Math.floor(progressPercentage / 5))}
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <Badge className="bg-green-400/20 text-green-400 border-green-400/30">
+                      <Clock className="w-3 h-3 mr-1" />
+                      PROTOCOL_ACTIVE
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-green-700 text-center">
+                    {">"} USE_MAIN_BUTTON_FOR_CONTROL {"<"}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center space-y-4">
+                  <div className="text-green-700 space-y-2">
+                    <div className="text-6xl">⛏</div>
+                    <div className="text-xs uppercase tracking-wider">MINER_STATUS: STANDBY</div>
+                    <div className="text-xs">
+                      {"> "} USE_MAIN_BUTTON_TO_START {"<"}
+                    </div>
+                  </div>
+                  <div className="text-xs text-green-700 font-mono border border-green-400/20 p-2">
+                    CONTROL_VIA_TELEGRAM_MAIN_BUTTON
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Diagnostics */}
+        <div className="px-4">
+          <Card className="bg-black border-green-400/30 border">
+            <CardHeader className="border-b border-green-400/20">
+              <CardTitle className="flex items-center gap-2 text-green-400">
+                <Zap className="text-green-400" />
+                SYSTEM_DIAGNOSTICS
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 p-4">
+              <div className="grid grid-cols-1 gap-2 text-xs">
+                <div className="flex justify-between items-center border-b border-green-400/10 pb-1">
+                  <span className="text-green-600 uppercase">MINING_SPEED:</span>
+                  <span className="text-green-400 font-mono">{minerStats.miningSpeed.toFixed(6)}_SHARDS/DAY</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-green-400/10 pb-1">
+                  <span className="text-green-600 uppercase">WORK_DURATION:</span>
+                  <span className="text-green-400 font-mono">
+                    {minerStats.maxWorkTime.toString().padStart(2, "0")}_HOURS
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-green-400/10 pb-1">
+                  <span className="text-green-600 uppercase">SUCCESS_RATE:</span>
+                  <span className="text-green-400 font-mono">
+                    {(((minerStats.miningSpeed * minerStats.maxWorkTime) / 24) * 100).toFixed(4)}%
+                  </span>
+                </div>
+              </div>
+              <div className="text-center text-xs text-green-700 mt-4">
+                {"[".repeat(10)} SYSTEM_OPTIMAL {"]".repeat(10)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Upgrade */}
+        <div className="px-4">
+          <Card className="bg-black border-green-400/30 border">
+            <CardHeader className="border-b border-green-400/20">
+              <CardTitle className="flex items-center gap-2 text-green-400">
+                <TrendingUp className="text-green-400" />
+                UPGRADE_PROTOCOL
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <div className="text-xs">
+                    <div className="text-green-400 uppercase font-mono">
+                      LEVEL_{(minerStats.level + 1).toString().padStart(2, "0")}_UPGRADE
+                    </div>
+                    <div className="text-green-700 text-xs">{"> "} 2X_SPEED + 1HR_DURATION</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-green-400 font-mono text-lg">
+                      {minerStats.upgradeCost.toString().padStart(4, "0")}
+                    </div>
+                    <div className="text-green-700 text-xs uppercase">SHARDS_REQ</div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-green-700 text-center">
+                  COST: {"$".repeat(Math.min(20, Math.floor(minerStats.upgradeCost / 10)))}
+                </div>
+              </div>
+
+              <Button
+                onClick={() => handleButtonClick(upgradeMiner)}
+                disabled={minerStats.shardsFound < minerStats.upgradeCost}
+                className="w-full bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/30 font-mono uppercase tracking-wider disabled:opacity-30 disabled:text-green-700 active:bg-green-400/30 transition-all duration-150"
+                size="lg"
+              >
+                {"> "} EXECUTE_UPGRADE_PROTOCOL {"<"}
+              </Button>
+
+              {minerStats.shardsFound < minerStats.upgradeCost && (
+                <div className="text-xs text-green-700 text-center font-mono">
+                  ERROR: INSUFFICIENT_SHARDS [{minerStats.upgradeCost - minerStats.shardsFound}_REQUIRED]
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4">
+          <div className="text-center text-xs text-green-700 pt-4 border-t border-green-400/20">
+            <div className="space-y-1">
+              <p className="font-mono">
+                {">"} DEEP_MINING_PROTOCOL_v2.1.0 {"<"}
+              </p>
+              <p className="text-green-800">KEEP_MINING_TO_DISCOVER_RARE_GIFT_SHARDS</p>
+              {webApp && (
+                <p className="text-green-900 text-xs">
+                  TG_API: {webApp.version} | VIEWPORT: {Math.round(webApp.viewportHeight)}px
+                </p>
+              )}
+              <div className="text-green-900">{"#".repeat(50)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-32" />
+
+        <div className="px-4">
+          <div className="text-center text-xs text-green-800 space-y-2">
+            <div className="border border-green-400/10 p-4">
+              <p className="font-mono">
+                {">"} SCROLL_TEST_AREA {"<"}
+              </p>
+              <p>IF_YOU_CAN_SEE_THIS_SCROLLING_WORKS</p>
+              <div className="text-green-900">{"▼".repeat(20)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-24" />
       </div>
-
-      {/* UserProfileModal */}
-      <UserProfileModal isOpen={isUserModalOpen} onClose={handleUserModalClose} user={telegramUser} webApp={webApp} />
-
-      {/* Navigation Panel */}
-      <NavigationPanel activeTab={activeTab} onTabChange={handleTabChange} onTabClick={handleTabClick} />
     </div>
   )
 }
