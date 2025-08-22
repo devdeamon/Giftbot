@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import "./globals.css"
+import "./globals.css" // Removed styles/globals.css import
 import Script from "next/script"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: "Deep mining protocol for discovering rare GIFT shards",
   viewport:
     "width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no",
-    generator: 'v0.app'
+  generator: "v0.app",
 }
 
 export default function RootLayout({

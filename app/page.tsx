@@ -101,6 +101,7 @@ interface TelegramUser {
 const LS_KEYS = {
   miner: "gift_mining_miner_stats",
   session: "gift_mining_session",
+  lastTick: "gift_last_tick", // Added for lazy calculation
 } as const
 
 const loadLS = <T,>(k: string, fallback: T): T => {
@@ -118,6 +119,15 @@ const saveLS = (k: string, v: unknown) => {
   } catch {}
 }
 
+let saveThrottleTimeout: NodeJS.Timeout | null = null
+const saveThrottled = (k: string, v: unknown) => {
+  if (saveThrottleTimeout) clearTimeout(saveThrottleTimeout)
+  saveThrottleTimeout = setTimeout(() => {
+    saveLS(k, v)
+    saveThrottleTimeout = null
+  }, 10000) // Save every 10 seconds max
+}
+
 // ---- Utils ----
 const formatTime = (ms: number) => {
   const hours = Math.floor(ms / 3_600_000)
@@ -132,6 +142,7 @@ export default function GiftMiningGame() {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null)
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null)
   const [isReady, setIsReady] = useState(false)
+  const [botStatus, setBotStatus] = useState<"connecting" | "connected" | "error">("connecting")
 
   const [minerStats, setMinerStats] = useState<MinerStats>(() =>
     loadLS<MinerStats>("gift_mining_miner_stats", {
@@ -155,6 +166,14 @@ export default function GiftMiningGame() {
   // Keep MainButton handler exact reference
   const mainButtonHandlerRef = useRef<(() => void) | null>(null)
 
+  const haptic = (style: "light" | "medium" | "heavy" = "medium") => {
+    webApp?.HapticFeedback?.impactOccurred(style)
+  }
+
+  const notify = (type: "success" | "warning" | "error") => {
+    webApp?.HapticFeedback?.notificationOccurred(type)
+  }
+
   // ----- Bootstrap Telegram WebApp -----
   useEffect(() => {
     if (typeof window === "undefined" || !window.Telegram?.WebApp) return
@@ -176,12 +195,15 @@ export default function GiftMiningGame() {
     })
 
     tg.requestFullscreen?.()
-
     tg.disableVerticalSwipes?.()
-
     tg.enableClosingConfirmation?.()
 
-    if (tg.initDataUnsafe?.user) setTelegramUser(tg.initDataUnsafe.user)
+    if (tg.initDataUnsafe?.user) {
+      setTelegramUser(tg.initDataUnsafe.user)
+      setBotStatus("connected")
+    } else {
+      setBotStatus("error")
+    }
 
     // theme vars
     if (tg.themeParams) {
@@ -210,18 +232,56 @@ export default function GiftMiningGame() {
 
     setIsReady(true)
 
-    // On mount, attempt to restore active session
-    if (miningSession.isActive && miningSession.endTime > Date.now()) {
-      setMiningSession((prev) => ({ ...prev, timeRemaining: prev.endTime - Date.now() }))
-      tg.enableClosingConfirmation?.()
-    } else if (miningSession.isActive) {
-      // session expired while app was closed
+    const now = Date.now()
+    const lastTick = loadLS<number>(LS_KEYS.lastTick, now)
+    const deltaTime = Math.max(0, now - lastTick)
+
+    if (miningSession.isActive && miningSession.endTime > now) {
+      // Session still active, calculate progress
+      const perMs = minerStats.miningSpeed / (24 * 60 * 60 * 1000)
+      const gained = deltaTime * perMs
+      if (gained > 0) {
+        setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + gained }))
+      }
+      setMiningSession((prev) => ({ ...prev, timeRemaining: prev.endTime - now }))
+    } else if (miningSession.isActive && miningSession.endTime <= now) {
+      // Session completed while offline
+      const sessionDuration = miningSession.endTime - miningSession.startTime
+      const perMs = minerStats.miningSpeed / (24 * 60 * 60 * 1000)
+      const totalGained = sessionDuration * perMs
+      if (totalGained > 0) {
+        setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + totalGained }))
+      }
       setMiningSession({ isActive: false, startTime: 0, endTime: 0, timeRemaining: 0 })
+      notify("success") // Notify completion
     }
+
+    saveLS(LS_KEYS.lastTick, now)
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) return
+
+      const currentTime = Date.now()
+      const prevTick = loadLS<number>(LS_KEYS.lastTick, currentTime)
+      const timeDelta = Math.max(0, currentTime - prevTick)
+
+      if (miningSession.isActive && miningSession.endTime > currentTime) {
+        const perMs = minerStats.miningSpeed / (24 * 60 * 60 * 1000)
+        const gained = timeDelta * perMs
+        if (gained > 0) {
+          setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + gained }))
+        }
+      }
+
+      saveLS(LS_KEYS.lastTick, currentTime)
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
 
     return () => {
       tg.disableClosingConfirmation?.()
       tg.enableVerticalSwipes?.()
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
 
       // remove main button handler if any
       if (mainButtonHandlerRef.current) {
@@ -232,13 +292,12 @@ export default function GiftMiningGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ----- Persist miner stats & session -----
   useEffect(() => {
-    saveLS(LS_KEYS.miner, minerStats)
+    saveThrottled(LS_KEYS.miner, minerStats)
   }, [minerStats])
 
   useEffect(() => {
-    saveLS(LS_KEYS.session, miningSession)
+    saveThrottled(LS_KEYS.session, miningSession)
   }, [miningSession])
 
   // ----- Manage closing confirmation based on mining state -----
@@ -291,34 +350,38 @@ export default function GiftMiningGame() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webApp, miningSession.isActive, miningSession.timeRemaining])
 
-  // ----- Mining timer -----
   useEffect(() => {
     if (!miningSession.isActive) return
+
     const interval = setInterval(() => {
       const now = Date.now()
       const remaining = Math.max(0, miningSession.endTime - now)
 
       if (remaining === 0) {
+        // Session completed
         setMiningSession({ isActive: false, startTime: 0, endTime: 0, timeRemaining: 0 })
-        const found = Math.random() < (minerStats.miningSpeed * minerStats.maxWorkTime) / 24
-        if (found) {
-          setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + 1 }))
-          webApp?.HapticFeedback.notificationOccurred("success")
-        } else {
-          webApp?.HapticFeedback.impactOccurred("light")
+        notify("success")
+
+        // Final calculation for completed session
+        const sessionDuration = miningSession.endTime - miningSession.startTime
+        const perMs = minerStats.miningSpeed / (24 * 60 * 60 * 1000)
+        const totalGained = sessionDuration * perMs
+        if (totalGained > 0) {
+          setMinerStats((prev) => ({ ...prev, shardsFound: prev.shardsFound + totalGained }))
         }
       } else {
+        // Just update UI timer, no shard calculation here
         setMiningSession((prev) => ({ ...prev, timeRemaining: remaining }))
       }
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [miningSession.isActive, miningSession.endTime, minerStats.miningSpeed, minerStats.maxWorkTime, webApp])
+  }, [miningSession.isActive, miningSession.endTime, minerStats.miningSpeed, webApp])
 
   // ----- Actions -----
   const startMining = () => {
     if (miningSession.isActive) return
-    webApp?.HapticFeedback.impactOccurred("medium")
+    haptic("medium") // Added haptic feedback
 
     const now = Date.now()
     const duration = minerStats.maxWorkTime * 60 * 60 * 1000
@@ -330,6 +393,8 @@ export default function GiftMiningGame() {
       timeRemaining: duration,
     })
 
+    saveLS(LS_KEYS.lastTick, now) // Update last tick
+
     webApp?.MainButton.setText("⛏ MINING IN PROGRESS...")
     webApp?.MainButton.setParams({ is_active: false })
     webApp?.MainButton.showProgress(false)
@@ -337,11 +402,11 @@ export default function GiftMiningGame() {
 
   const upgradeMiner = () => {
     if (minerStats.shardsFound < minerStats.upgradeCost) {
-      webApp?.HapticFeedback.notificationOccurred("error")
+      notify("error") // Added haptic feedback
       return
     }
 
-    webApp?.HapticFeedback.notificationOccurred("success")
+    notify("success") // Added haptic feedback
 
     setMinerStats((prev) => ({
       level: prev.level + 1,
@@ -353,7 +418,7 @@ export default function GiftMiningGame() {
   }
 
   const handleButtonClick = (callback: () => void) => {
-    webApp?.HapticFeedback.selectionChanged()
+    webApp?.HapticFeedback.selectionChanged() // Added haptic feedback
     callback()
   }
 
@@ -383,19 +448,20 @@ export default function GiftMiningGame() {
       className="h-screen bg-black overflow-y-auto"
       style={{
         overflowY: "auto",
-        touchAction: "pan-y",
+        touchAction: "pan-y", // Better touch handling
         WebkitOverflowScrolling: "touch",
         overscrollBehavior: "auto",
         height: "100vh",
         maxHeight: "100vh",
+        paddingTop: "max(80px, env(safe-area-inset-top), var(--tg-safe-area-inset-top, 60px))",
+        paddingBottom: "max(20px, env(safe-area-inset-bottom), var(--tg-safe-area-inset-bottom, 20px))",
+        paddingLeft: "max(16px, env(safe-area-inset-left), var(--tg-safe-area-inset-left, 16px))",
+        paddingRight: "max(16px, env(safe-area-inset-right), var(--tg-safe-area-inset-right, 16px))",
       }}
     >
       <div
         className="text-green-400 space-y-6 font-mono pb-32"
         style={{
-          paddingTop: "max(80px, var(--tg-safe-area-inset-top, 60px), var(--tg-content-safe-area-inset-top, 60px))",
-          paddingLeft: "max(var(--tg-safe-area-inset-left, 16px), var(--tg-content-safe-area-inset-left, 16px))",
-          paddingRight: "max(var(--tg-safe-area-inset-right, 16px), var(--tg-content-safe-area-inset-right, 16px))",
           minHeight: "calc(100vh + 200px)",
         }}
       >
@@ -421,7 +487,7 @@ export default function GiftMiningGame() {
 
             <div className="text-xs text-green-700 mt-2">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div>STATUS: ONLINE</div>
+                <div>BOT: {botStatus.toUpperCase()}</div>
                 <div>PROTOCOL: v2.1.0</div>
                 <div>PLATFORM: {webApp?.platform?.toUpperCase() || "WEB"}</div>
               </div>

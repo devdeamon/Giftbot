@@ -38,13 +38,19 @@
   --sidebar-border: oklch(0.35 0.02 264);
   --sidebar-ring: oklch(0.65 0.25 280 / 0.5);
 
-  /* Added Telegram WebApp CSS variables for dynamic theming */
+  /* Telegram WebApp CSS variables for dynamic theming */
   --tg-theme-bg-color: #000000;
   --tg-theme-text-color: #00ff00;
   --tg-theme-hint-color: #008000;
   --tg-theme-button-color: #00ff00;
   --tg-viewport-height: 100vh;
   --tg-viewport-stable-height: 100vh;
+
+  /* Added safe area inset variables for better mobile support */
+  --tg-safe-area-inset-top: 0px;
+  --tg-safe-area-inset-bottom: 0px;
+  --tg-safe-area-inset-left: 0px;
+  --tg-safe-area-inset-right: 0px;
 }
 
 .dark {
@@ -127,16 +133,17 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Added Telegram WebApp optimizations for mobile and touch */
+    /* Enhanced mobile optimizations */
     -webkit-user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
     touch-action: manipulation;
     user-select: none;
+    /* Removed will-change: transform to reduce GPU usage */
   }
 
-  /* Added Telegram WebApp viewport and safe area support */
+  /* Improved Telegram WebApp viewport and safe area support */
   html {
     height: 100%;
     height: var(--tg-viewport-height, 100vh);
@@ -146,21 +153,22 @@
   body {
     height: 100%;
     height: var(--tg-viewport-height, 100vh);
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    /* Better safe area handling with fallbacks */
+    padding-top: max(env(safe-area-inset-top), var(--tg-safe-area-inset-top, 0px));
+    padding-bottom: max(env(safe-area-inset-bottom), var(--tg-safe-area-inset-bottom, 0px));
+    padding-left: max(env(safe-area-inset-left), var(--tg-safe-area-inset-left, 0px));
+    padding-right: max(env(safe-area-inset-right), var(--tg-safe-area-inset-right, 0px));
   }
 
-  /* Added button touch feedback for better mobile experience */
+  /* Enhanced button touch feedback for 60fps performance */
   button {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    transition: transform 0.1s ease;
   }
 
   button:active {
     transform: scale(0.98);
-    transition: transform 0.1s ease;
   }
 
   /* Added custom animations for glowing crystals and mining effects */
